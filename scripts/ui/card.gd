@@ -8,6 +8,7 @@ var _lines: Array
 var _buttons: Array
 var _title: String
 var _bg: Color
+var _opened_at := 0
 
 
 func _init(title: String, lines: Array, buttons: Array = [], bg := Color(0.01, 0.01, 0.04, 0.96)) -> void:
@@ -20,6 +21,7 @@ func _init(title: String, lines: Array, buttons: Array = [], bg := Color(0.01, 0
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_opened_at = Time.get_ticks_msec()
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	box.offset_left = 60
@@ -53,7 +55,8 @@ func _draw() -> void:
 func _gui_input(event: InputEvent) -> void:
 	if _buttons.is_empty() and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
-		_finish(0)
+		if Time.get_ticks_msec() - _opened_at > 300:
+			_finish(0)
 
 
 func _unhandled_input(event: InputEvent) -> void:

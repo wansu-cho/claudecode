@@ -30,11 +30,13 @@ var _compare_old := {}
 var _status := ""
 var _status_t := 0.0
 var _t := 0.0
+var _opened_at := 0
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_opened_at = Time.get_ticks_msec()
 	var row := HBoxContainer.new()
 	row.position = Vector2(430, 330)
 	row.add_theme_constant_override("separation", 8)
@@ -87,7 +89,8 @@ func _process(delta: float) -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
-		press(event.position)
+		if Time.get_ticks_msec() - _opened_at > 300:
+			press(event.position)
 
 
 func _unhandled_input(event: InputEvent) -> void:

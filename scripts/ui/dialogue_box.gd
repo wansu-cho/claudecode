@@ -12,6 +12,7 @@ var _text: Label
 var _hint: Label
 var _choices: VBoxContainer
 var _waiting := false
+var _opened_at := 0
 
 
 func _ready() -> void:
@@ -54,6 +55,7 @@ func say(lines: Array) -> void:
 		_text.add_theme_color_override("font_color", Pal.TEXT if who != "" else Color("c9c4ee"))
 		_hint.visible = true
 		_waiting = true
+		_opened_at = Time.get_ticks_msec()
 		await _next
 	_waiting = false
 	visible = false
@@ -83,7 +85,8 @@ func choose(options: Array) -> int:
 func _gui_input(event: InputEvent) -> void:
 	if _waiting and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
-		_next.emit()
+		if Time.get_ticks_msec() - _opened_at > 200:
+			_next.emit()
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -9,7 +9,7 @@ signal fact_added(id: String)
 
 const NIGHT_LEN := 840.0          # 17:30 ~ 07:30, 14시간
 const START_CLOCK := 17 * 60 + 30
-const SEC_PER_MIN := 0.5          # 실제 0.5초 = 게임 1분 (한 밤 = 약 7분)
+const SEC_PER_MIN := 1.0 / 3.0    # 실제 1/3초 = 게임 1분 (한 밤 = 약 4분 40초)
 const SAVE_PATH := "user://save.json"
 
 var minutes := 0.0
@@ -18,6 +18,7 @@ var running := false
 var facts := {}                   # 알아낸 사실 id -> true
 var freed := {}                   # 아침으로 돌아간 사람 id -> true
 var night := {}                   # 이번 밤에만 쓰는 기록
+var double_jump := false          # 나중에 퀘스트로 얻는 두 번 점프
 var _freeze := 0
 
 
@@ -88,13 +89,14 @@ func new_game() -> void:
 	loop = 1
 	facts = {}
 	freed = {}
+	double_jump = false
 	save()
 
 
 func save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"loop": loop, "facts": facts.keys(), "freed": freed.keys()}))
+		f.store_string(JSON.stringify({"loop": loop, "facts": facts.keys(), "freed": freed.keys(), "double_jump": double_jump}))
 
 
 func load_save() -> bool:
@@ -110,4 +112,5 @@ func load_save() -> bool:
 	freed = {}
 	for id in data.get("freed", []):
 		freed[id] = true
+	double_jump = bool(data.get("double_jump", false))
 	return true

@@ -11,7 +11,9 @@ const WORLD_W := 2560.0
 const GROUND := 300.0
 const HOR := 262.0
 const SKY_K := 3.0
-const SPEED := 95.0
+const SPEED := 145.0
+const JUMP_V := 235.0       # 점프 처음 속도 (픽셀/초)
+const GRAVITY := 780.0
 const NPC_SPEED := 55.0
 const REACH := 26.0
 
@@ -33,8 +35,11 @@ var player_x := 1400.0
 var facing := -1
 var walk_t := 0.0
 var active := true
-var hold_left := false
-var hold_right := false
+var pad_dir := 0.0           # 가상 키패드 입력 (-1 ~ 1)
+var y_off := 0.0             # 점프 높이 (위가 −)
+var vy := 0.0
+var jumps := 0
+var prompt_rect := Rect2()   # 화면에 보이는 [확인] 말풍선 (누르면 상호작용)
 var nearest := ""
 var keti_x := KETI_HOME
 var dolsoe_x := DOLSOE_HOME
@@ -50,6 +55,9 @@ func _ready() -> void:
 
 func reset_night() -> void:
 	player_x = 1400.0
+	y_off = 0.0
+	vy = 0.0
+	jumps = 0
 	keti_x = KETI_HOME
 	dolsoe_x = DOLSOE_HOME
 	boat_x = BOAT_X
@@ -83,17 +91,25 @@ static func dolsoe_state() -> String:
 func _process(delta: float) -> void:
 	_t += delta
 	if active:
-		var dir := 0
-		if hold_left or Input.is_physical_key_pressed(KEY_LEFT) or Input.is_physical_key_pressed(KEY_A):
-			dir -= 1
-		if hold_right or Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_physical_key_pressed(KEY_D):
-			dir += 1
-		if dir != 0:
-			facing = dir
+		var dir := pad_dir
+		if Input.is_physical_key_pressed(KEY_LEFT) or Input.is_physical_key_pressed(KEY_A):
+			dir = -1.0
+		if Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_physical_key_pressed(KEY_D):
+			dir = 1.0
+		if absf(dir) > 0.05:
+			facing = 1 if dir > 0 else -1
 			walk_t += delta
 			player_x = clampf(player_x + dir * SPEED * delta, 12.0, WORLD_W - 12.0)
 		else:
 			walk_t = 0.0
+	# 점프
+	if y_off < 0.0 or vy < 0.0:
+		vy += GRAVITY * delta
+		y_off += vy * delta
+		if y_off >= 0.0:
+			y_off = 0.0
+			vy = 0.0
+			jumps = 0
 
 	var ks := keti_state()
 	if ks == "hall" or ks == "yard":
@@ -129,6 +145,18 @@ func _find_nearest() -> String:
 			best_d = d
 			best = t["id"]
 	return best
+
+
+## 점프 (두 번 점프는 Game.double_jump를 얻으면 가능)
+func jump() -> void:
+	if not active:
+		return
+	var max_jumps := 2 if Game.double_jump else 1
+	if jumps < max_jumps:
+		vy = -JUMP_V
+		jumps += 1
+		if y_off == 0.0:
+			y_off = -0.01
 
 
 func try_interact() -> void:
@@ -289,22 +317,29 @@ func _draw_people() -> void:
 		var feet := Vector2(dolsoe_x, GROUND - (4 if dolsoe_x < 520 else 0))
 		Sprites.draw_aura(self, Sprites.DOLSOE, feet, Color(0.5, 0.92, 0.97, 0.8))
 		Sprites.draw(self, Sprites.DOLSOE, Sprites.DOLSOE_PAL, feet, player_x < dolsoe_x)
-	var bob := 1.0 if int(walk_t * 8.0) % 2 == 1 else 0.0
+	var bob := 1.0 if int(walk_t * 10.0) % 2 == 1 and y_off == 0.0 else 0.0
 	var on_pier := player_x < 520
-	var feet := Vector2(player_x, GROUND - bob - (4 if on_pier else 0))
+	var ground_y := GROUND - (4 if on_pier else 0)
+	if y_off < 0.0:
+		var w := 12.0 * (1.0 + y_off / 80.0)
+		draw_rect(Rect2(player_x - w / 2.0, ground_y - 1, w, 2), Color(0, 0, 0, 0.35))
+	var feet := Vector2(player_x, ground_y - bob + y_off)
 	Sprites.draw(self, Sprites.HERO, Sprites.HERO_PAL, feet, facing > 0)
 	var light := feet + Vector2(8 * (1 if facing > 0 else -1), -8)
 	draw_circle(light, 8, Color(1, 0.2, 0.2, 0.18))
 
 
 func _draw_prompt() -> void:
+	prompt_rect = Rect2()
 	if nearest == "" or not active:
 		return
-	var text := "[확인] " + label_of(nearest)
+	var key := "눌러서" if DisplayServer.is_touchscreen_available() else "E"
+	var text := "[%s] %s" % [key, label_of(nearest)]
 	var font := get_theme_default_font()
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL).x + 12
 	var x := clampf(player_x - cam - w / 2.0, 4, Pal.SCREEN.x - w - 4)
-	var r := Rect2(x, GROUND - 64, w, 16)
+	var r := Rect2(x, GROUND - 70, w, 20)
+	prompt_rect = r.grow(6)
 	draw_rect(r, Pal.PANEL)
 	draw_rect(r, Pal.CYAN, false, 1.0)
-	draw_string(font, r.position + Vector2(6, 12), text, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
+	draw_string(font, r.position + Vector2(6, 14), text, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)

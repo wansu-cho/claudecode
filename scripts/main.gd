@@ -3,12 +3,14 @@ extends Control
 ##   제목 → (첫 밤이면) 도입 이야기 → 섬 탐험 → 07:30 해돋이 → 다음 밤 (관측 일지는 남음)
 ##
 ## 조작
-##   이동: ← → 또는 A D (터치: ◀ ▶ 누르고 있기)
-##   확인/대화: Space, E, Enter (터치: 확인)
+##   이동: ← → 또는 A D (터치: 화면 왼쪽을 누른 채 끌기)
+##   점프: Space, W, ↑ (터치: 화면 오른쪽 탭)
+##   확인/대화: E, Enter (터치: [눌러서 …] 말풍선 탭)
 ##   관측 일지: J (터치: 위쪽 버튼)
 
 const WorldScript := preload("res://scripts/world.gd")
 const HudScript := preload("res://scripts/ui/hud.gd")
+const PadScript := preload("res://scripts/ui/touch_pad.gd")
 const DialogueScript := preload("res://scripts/ui/dialogue_box.gd")
 const CardScript := preload("res://scripts/ui/card.gd")
 const JournalScript := preload("res://scripts/ui/journal_view.gd")
@@ -17,6 +19,7 @@ const PendulumScript := preload("res://scripts/views/pendulum_view.gd")
 
 var world: Control
 var hud: Control
+var pad: Control
 var dialogue: Control
 var overlay_layer: Control
 var _overlay: Control = null
@@ -28,11 +31,14 @@ func _ready() -> void:
 	world = WorldScript.new()
 	add_child(world)
 	world.interact.connect(_on_interact)
+	pad = PadScript.new()
+	pad.world = world
+	add_child(pad)
+	pad.jump.connect(func(): world.jump())
+	pad.interact.connect(func(): world.try_interact())
 	hud = HudScript.new()
-	hud.world = world
 	add_child(hud)
 	hud.journal_pressed.connect(open_journal)
-	hud.action_pressed.connect(func(): world.try_interact())
 	overlay_layer = Control.new()
 	overlay_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -90,6 +96,7 @@ func _hint() -> String:
 func _process(_delta: float) -> void:
 	var can_move := _overlay == null and not dialogue.visible and not _busy
 	world.active = can_move and Game.running
+	pad.enabled = world.active
 	hud.visible = _overlay == null
 	if Game.running and Game.minutes >= Game.NIGHT_LEN and not _ending and not _busy:
 		_ending = true
@@ -101,9 +108,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _overlay != null or dialogue.visible or _busy:
 		return
-	if event.keycode in [KEY_SPACE, KEY_E, KEY_ENTER, KEY_KP_ENTER]:
+	if event.keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
 		world.try_interact()
+	elif event.keycode in [KEY_SPACE, KEY_W, KEY_UP]:
+		get_viewport().set_input_as_handled()
+		world.jump()
 	elif event.keycode == KEY_J:
 		get_viewport().set_input_as_handled()
 		open_journal()
