@@ -5,14 +5,14 @@ config_version=5
 
 [application]
 
-config/name="프로젝트 골든 레코드"
-config/description="어린이천문대 수업용 픽셀 천문 게임"
+config/name="별지기의 마지막 밤"
+config/description="시간 루프 천문 탐험 게임 (시제품)"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5")
 
 [autoload]
 
-GameState="*res://scripts/game_state.gd"
+Game="*res://scripts/game.gd"
 
 [display]
 
@@ -22,6 +22,7 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
+window/handheld/orientation=0
 
 [gui]
 
@@ -39,4 +40,4 @@ pointing/emulate_mouse_from_touch=true
 textures/canvas_textures/default_texture_filter=0
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
-environment/defaults/default_clear_color=Color(0.043, 0.055, 0.102, 1)
+environment/defaults/default_clear_color=Color(0.02, 0.024, 0.07, 1)

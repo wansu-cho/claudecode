@@ -1,122 +1,187 @@
 extends SceneTree
-## 자동 점검용 스크립트입니다. (게임에는 포함되지 않습니다)
-## 처음부터 끝까지 자동으로 한 판을 플레이하고, 중간 화면을 사진으로 저장합니다.
-##
-## 실행 예:
-##   godot --path . --script res://tests/autoplay.gd -- 7 /저장할/폴더
-##   (7 = 참가 인원, 폴더를 적지 않으면 사진은 저장하지 않습니다)
+## 자동 점검: 시제품을 처음부터 끝까지 풀어 봅니다. (게임에는 포함되지 않습니다)
+##   godot --path . --script res://tests/autoplay.gd -- [사진 저장 폴더]
+## 끝까지 가면 "AUTOPLAY OK"를 출력합니다.
 
-var players := 7
 var shot_dir := ""
 var main: Node
+var game: Node
 var shots := 0
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
-		players = int(args[0])
-	if args.size() > 1:
-		shot_dir = args[1]
+		shot_dir = args[0]
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://save.json"))
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
-	_play()
+	game = root.get_node("Game")
+	_run()
 
 
-func _play() -> void:
+func _run() -> void:
 	await _frames(5)
 	await _shot("title")
-	_key(KEY_ENTER)
+	_key(KEY_ENTER)                                  # 시작하기
 	await _frames(3)
-	await _shot("setup")
-	_key(KEY_0 if players == 10 else KEY_0 + players)
-	await _frames(3)
-	await _shot("assign")
-	_key(KEY_ENTER)
-	await _frames(3)
-	await _shot("briefing")
-	_key(KEY_ENTER)
+	await _shot("intro")
+	await _advance()                                 # 도입 이야기
+	_check(game.has("note"), "쪽지 사실")
+	await _shot("world_start")
 
-	var guard := 0
-	while guard < 400:
-		guard += 1
-		await _frames(3)
-		var cur = main._current
-		if cur == null:
-			continue
-		var script_path: String = cur.get_script().resource_path
-		if script_path.ends_with("ending_screen.gd"):
-			for i in 4:
-				await _shot("ending_%d" % i)
-				_key(KEY_ENTER)
-				await _frames(3)
-			print("AUTOPLAY OK: data=%d players=%d" % [root.get_node("GameState").data, players])
-			quit(0)
+	# 1) 진자 기록 두 번 (17:40, 18:50)
+	main.world.player_x = 1880.0
+	await _frames(2)
+	await _shot("lobby")
+	game.minutes = game.at("17:40")
+	main._on_interact("pendulum")
+	await _frames(2)
+	main._overlay.record()
+	await _shot("pendulum_1")
+	main._overlay.close()
+	await _frames(2)
+
+	# 2) 망원경: 초저녁 북두칠성은 숨어 있음 → 카시오페이아로 북극성, 사진 1
+	game.minutes = game.at("18:45")
+	main.world.player_x = 1340.0
+	main._on_interact("telescope")
+	await _frames(3)
+	var sky: Node = main._overlay
+	_check(game.has("dipper_low"), "숨은 북두칠성 사실")
+	await _shot("sky_open")
+	sky.press(_mid(sky.pos["caph"], sky.pos["schedar"]))
+	sky.press(_mid(sky.pos["segin"], sky.pos["ruchbah"]))
+	await _frames(2)
+	await _shot("sky_meet")
+	sky.press(sky.pos["navi"])
+	await _wait(2.3)
+	await _shot("sky_guide")
+	sky.press(sky.pos["polaris"])
+	_check(game.has("polaris_cas"), "카시오페이아로 북극성")
+	sky.take_photo()
+	await _frames(3)
+	await _shot("sky_polaris")
+	sky.close()
+	await _frames(2)
+
+	# 3) 진자 두 번째 기록 → 사실
+	game.minutes = game.at("18:55")
+	main._on_interact("pendulum")
+	await _frames(2)
+	main._overlay.record()
+	_check(game.has("pendulum"), "진자 사실")
+	await _shot("pendulum_2")
+	main._overlay.close()
+
+	# 4) 케티 만나기 (전시실, 19:30)
+	game.minutes = game.at("19:30")
+	main.world.player_x = 2230.0
+	await _frames(3)
+	await _shot("keti_hall")
+	main._on_interact("keti")
+	await _advance()
+	_key(KEY_2)                                      # 일단 그냥 둔다
+	await _frames(3)
+	_check(game.has("keti_story"), "케티 이야기")
+
+	# 5) 사진 두 번째 (20:00) → 도는 하늘
+	game.minutes = game.at("20:00")
+	main._on_interact("telescope")
+	await _frames(3)
+	main._overlay.take_photo()
+	await _wait(1.0)
+	_check(game.has("star_trail"), "도는 하늘 사실")
+	await _shot("sky_compare")
+	main._overlay.close()
+	await _frames(2)
+
+	# 6) 돌쇠: 항구에서 증거 (21:00)
+	game.minutes = game.at("21:00")
+	main.world.dolsoe_x = 330.0
+	main.world.player_x = 330.0
+	await _frames(3)
+	await _shot("harbor")
+	main._on_interact("dolsoe")
+	await _advance()
+	_key(KEY_1)                                      # 증거를 보여 준다
+	await _frames(3)
+	await _shot("journal_pick")
+	var j: Node = main._overlay
+	j._selected = ["polaris_cas"]
+	j._confirm()
+	await _frames(2)
+	await _advance()
+	_check(game.freed.has("dolsoe"), "돌쇠 귀환")
+	await _wait(1.5)
+	await _shot("boat")
+
+	# 7) 케티에게 증거 두 개 (21:30, 마당)
+	game.minutes = game.at("21:30")
+	main.world.keti_x = 1270.0
+	main.world.player_x = 1270.0
+	await _frames(3)
+	await _shot("keti_yard")
+	main._on_interact("keti")
+	await _advance()
+	_key(KEY_1)
+	await _frames(3)
+	j = main._overlay
+	j._selected = ["pendulum"]
+	j._confirm()
+	await _frames(2)
+	await _advance()                                 # 진자만으로는 반박
+	_check(not game.freed.has("keti"), "진자만으로는 설득 안 됨")
+	main._on_interact("keti")
+	await _advance()
+	_key(KEY_1)
+	await _frames(3)
+	j = main._overlay
+	j._selected = ["pendulum", "star_trail"]
+	j._confirm()
+	await _frames(2)
+	await _advance()                                 # 설득 → 시제품 끝 안내
+	_check(game.freed.has("keti"), "케티 귀환")
+	await _shot("prototype_end")
+	_key(KEY_1)                                      # 계속 둘러보기
+	await _frames(3)
+
+	# 8) 해돋이 → 두 번째 밤 (일지는 남음)
+	game.minutes = game.NIGHT_LEN - 0.2
+	await _wait(0.6)
+	await _advance()
+	await _shot("loop2_card")
+	_key(KEY_ENTER)
+	await _frames(3)
+	_check(game.loop == 2, "두 번째 밤")
+	_check(game.facts.size() == 7, "일지 7개 유지 (북두칠성 방법은 안 씀)")
+	await _shot("loop2_world")
+	print("AUTOPLAY OK: loop=%d facts=%d freed=%s" % [game.loop, game.facts.size(), str(game.freed.keys())])
+	quit(0)
+
+
+func _check(ok: bool, what: String) -> void:
+	if not ok:
+		push_error("AUTOPLAY FAIL: " + what)
+		print("AUTOPLAY FAIL: " + what)
+		quit(1)
+
+
+func _mid(a: Vector2, b: Vector2) -> Vector2:
+	return (a + b) / 2.0
+
+
+## 대사창이 닫힐 때까지 Enter를 누릅니다. (선택지가 나오면 멈춤)
+func _advance() -> void:
+	for i in 40:
+		await _frames(2)
+		var d: Node = main.dialogue
+		if not d.visible:
 			return
-		if cur is StageBase:
-			await _play_stage(cur)
-		elif cur is CardScreen:
-			await _shot("card")
-			_key(KEY_ENTER)
-	push_error("AUTOPLAY: 끝까지 가지 못했습니다")
-	quit(1)
-
-
-func _play_stage(stage: StageBase) -> void:
-	var kind: String = stage.stage["kind"]
-	var tag := "stage%02d_%s" % [stage.stage["id"], "group" if stage.group_mode else "solo"]
-	await _shot(tag + "_start")
-	match kind:
-		"star_dipper":
-			# 틀린 별 한 번, 진짜 마우스 클릭으로 정답 두 개
-			stage._press_at(stage.pos["alkaid"])
-			_click(stage.pos["merak"])
-			await _frames(2)
-			_click(stage.pos["dubhe"])
-			await _frames(2)
-			await _wait(1.2)
-			await _shot(tag + "_guide")
-			await _wait(1.5)
-			stage._press_at(stage.pos["kochab"])
-			await _wait(0.4)
-			stage._press_at(stage.pos["polaris"])
-			await _wait(0.3)
-			await _shot(tag + "_done")
-		"star_cassiopeia":
-			stage._press_id("side_inner_a")
-			await _wait(0.4)
-			stage._press_id("side_outer_a")
-			await _wait(0.4)
-			stage._press_id("side_outer_b")
-			await _frames(2)
-			await _shot(tag + "_meet")
-			stage._press_id("navi")
-			await _wait(2.8)
-			await _shot(tag + "_guide")
-			stage._press_id("polaris")
-			await _wait(0.3)
-			await _shot(tag + "_done")
-		"quiz":
-			if stage.group_mode:
-				_key(KEY_ENTER)
-				await _frames(3)
-				await _shot(tag + "_reveal")
-				_key(KEY_ENTER)
-			else:
-				var wrong_i: int = (stage.quiz["answer"] + 1) % 3
-				_key(KEY_1 + wrong_i)
-				await _wait(0.4)
-				_key(KEY_1 + stage.quiz["answer"])
-				await _frames(3)
-				await _shot(tag + "_reveal")
-				_key(KEY_ENTER)
-		_:
-			_key(KEY_ENTER)
-	# 단계가 끝날 때까지 기다림
-	var t := 0
-	while is_instance_valid(stage) and stage.is_inside_tree() and main._current == stage and t < 300:
-		await _frames(1)
-		t += 1
+		if not d._waiting:
+			return
+		_key(KEY_ENTER)
+	await _frames(2)
 
 
 func _key(code: int) -> void:
@@ -128,17 +193,6 @@ func _key(code: int) -> void:
 	var up := e.duplicate()
 	up.pressed = false
 	Input.parse_input_event(up)
-
-
-## 게임 화면(640x360) 좌표에 마우스(펜) 클릭을 보냅니다. 실제 화면 입력과 같은 길로 들어갑니다.
-func _click(p: Vector2) -> void:
-	for pressed in [true, false]:
-		var e := InputEventMouseButton.new()
-		e.button_index = MOUSE_BUTTON_LEFT
-		e.pressed = pressed
-		e.position = p
-		e.global_position = p
-		root.push_input(e, true)
 
 
 func _frames(n: int) -> void:
@@ -155,5 +209,4 @@ func _shot(name: String) -> void:
 		return
 	await _frames(2)
 	shots += 1
-	var img := root.get_texture().get_image()
-	img.save_png("%s/%03d_%s.png" % [shot_dir, shots, name])
+	root.get_texture().get_image().save_png("%s/%02d_%s.png" % [shot_dir, shots, name])

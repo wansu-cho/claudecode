@@ -1,231 +1,275 @@
 extends Control
-## 게임 전체의 흐름을 정하는 곳입니다.
+## 게임 전체 흐름입니다.
+##   제목 → (첫 밤이면) 도입 이야기 → 섬 탐험 → 07:30 해돋이 → 다음 밤 (관측 일지는 남음)
 ##
-## 시작 화면 → 인원 입력 → 단계 배정 발표 → 임무 브리핑
-## → (단계마다) 장 소개 → 대원 교대 → 예측 → 임무 → 결과
-## → 마지막 화면 → 다시 시작 화면
-##
-## 진행자(선생님) 전용 키
-##   Space : 일시정지 / 계속
-##   H     : 힌트 바로 보여 주기
-##   N     : 지금 단계(화면) 건너뛰기
-##   B     : 예측 보너스 (단계마다 한 번)
-##   F11   : 전체 화면 켜기/끄기
+## 조작
+##   이동: ← → 또는 A D (터치: ◀ ▶ 누르고 있기)
+##   확인/대화: Space, E, Enter (터치: 확인)
+##   관측 일지: J (터치: 위쪽 버튼)
 
-const HudScript := preload("res://scripts/screens/hud.gd")
-const SetupScript := preload("res://scripts/screens/setup_screen.gd")
-const EndingScript := preload("res://scripts/screens/ending_screen.gd")
-const STAGE_SCRIPTS := {
-	"star_dipper": preload("res://scripts/stages/stage_dipper.gd"),
-	"star_cassiopeia": preload("res://scripts/stages/stage_cassiopeia.gd"),
-	"quiz": preload("res://scripts/stages/stage_quiz.gd"),
-	"placeholder": preload("res://scripts/stages/stage_placeholder.gd"),
-}
-const PREDICTION_SECONDS := 10.0
+const WorldScript := preload("res://scripts/world.gd")
+const HudScript := preload("res://scripts/ui/hud.gd")
+const DialogueScript := preload("res://scripts/ui/dialogue_box.gd")
+const CardScript := preload("res://scripts/ui/card.gd")
+const JournalScript := preload("res://scripts/ui/journal_view.gd")
+const SkyScript := preload("res://scripts/views/sky_view.gd")
+const PendulumScript := preload("res://scripts/views/pendulum_view.gd")
 
-var _layer: Control          # 지금 화면이 들어가는 자리
-var _hud: Control
-var _pause_label: Label
-var _current: Control = null
-var _bonus_used := false
+var world: Control
+var hud: Control
+var dialogue: Control
+var overlay_layer: Control
+var _overlay: Control = null
+var _busy := false          # 대화나 이벤트가 진행 중
+var _ending := false
 
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
-
-	_layer = Control.new()
-	_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_layer.process_mode = Node.PROCESS_MODE_PAUSABLE
-	add_child(_layer)
-
-	_hud = HudScript.new()
-	_hud.visible = false
-	add_child(_hud)
-
-	_pause_label = Pal.label("일시정지  (Space를 누르면 계속)", Pal.BIG, Pal.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
-	_pause_label.set_anchors_preset(Control.PRESET_CENTER)
-	_pause_label.custom_minimum_size = Vector2(Pal.SCREEN.x, 40)
-	_pause_label.position = Vector2(0, Pal.SCREEN.y / 2 - 20)
-	_pause_label.add_theme_stylebox_override("normal", Pal.box_style())
-	_pause_label.visible = false
-	add_child(_pause_label)
-
-	_run()
+	world = WorldScript.new()
+	add_child(world)
+	world.interact.connect(_on_interact)
+	hud = HudScript.new()
+	hud.world = world
+	add_child(hud)
+	hud.journal_pressed.connect(open_journal)
+	hud.action_pressed.connect(func(): world.try_interact())
+	overlay_layer = Control.new()
+	overlay_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay_layer)
+	dialogue = DialogueScript.new()
+	add_child(dialogue)
+	_title()
 
 
-func _run() -> void:
-	while true:
-		await _play_once()
+func _title() -> void:
+	Game.running = false
+	var has_save := Game.load_save()
+	var buttons := ["이어 하기", "처음부터"] if has_save else ["시작하기"]
+	var card := CardScript.new(Story.TITLE, ["어린이천문대 겨울 별 캠프, 끝나지 않는 밤", "", "시제품 (그림은 임시)"], buttons)
+	add_child(card)
+	var pick: int = await card.done
+	if not has_save or pick == 1:
+		Game.new_game()
+	await _begin_night(true)
 
 
-func _play_once() -> void:
-	_hud.visible = false
-	await _card("프로젝트 골든 레코드", [
-		"어린이천문대 탐사대 임무",
-		"",
-		"진행자 키:  Space 일시정지 · H 힌트 · N 건너뛰기 · B 예측 보너스 · F11 전체 화면",
-	], "화면을 누르거나 Enter를 누르면 시작")
-
-	var setup: Control = _show(SetupScript.new())
-	var count: int = await setup.chosen
-	GameState.new_game(count)
-
-	await _card("탐사대 임무 배정", _assignment_lines())
-
-	_hud.visible = true
-	_hud.mission_text = "임무 브리핑"
-	_hud.player_text = ""
-	await _card("", StageData.BRIEFING)
-
-	var last_chapter := 0
-	for s in StageData.STAGES:
-		var id: int = s["id"]
-		var chapter: int = s["chapter"]
-		var group := GameState.is_group(id)
-		_bonus_used = false
-		_hud.mission_text = "%s · %02d" % [StageData.CHAPTERS[chapter]["title"].replace("  ", " "), id]
-		_hud.player_text = "전원 참여" if group else "대원 %d번" % GameState.assignments[id]
-
-		if chapter != last_chapter:
-			last_chapter = chapter
-			await _card(StageData.CHAPTERS[chapter]["title"], [StageData.CHAPTERS[chapter]["story"]])
-
-		await _handover(s, group)
-
-		if s.has("prediction") and not group:
-			await _prediction(s["prediction"])
-
-		var stage: StageBase = STAGE_SCRIPTS[s["kind"]].new()
-		stage.setup(s, group)
-		_show(stage)
-		_hud.stage = stage
-		var result: String = await stage.finished
-		_hud.stage = null
-
-		await _result(s, result)
-
-	_hud.visible = false
-	var ending: Control = _show(EndingScript.new())
-	await ending.done
-
-
-# ---- 화면 만들기 ----
-
-func _show(screen: Control) -> Control:
-	if _current != null:
-		_current.queue_free()
-	_current = screen
-	_layer.add_child(screen)
-	return screen
-
-
-func _card(title: String, lines: Array, footer := "화면을 누르거나 Enter를 누르면 계속") -> void:
-	var card := CardScreen.new(title, lines, footer)
-	_show(card)
-	await card.advanced
-
-
-func _assignment_lines() -> Array:
-	var lines := []
-	var ids := StageData.STAGES.map(func(s): return s["id"])
-	for i in range(0, ids.size(), 2):
-		var parts := []
-		for id in ids.slice(i, i + 2):
-			var who := "전원 참여" if GameState.is_group(id) else "대원 %d번" % GameState.assignments[id]
-			parts.append("임무 %02d → %s" % [id, who])
-		lines.append("      ".join(PackedStringArray(parts)))
-	lines.append("")
-	lines.append("%d명 참가 · 모든 대원이 한 번씩 임무를 맡는다." % GameState.player_count)
-	return lines
-
-
-func _handover(s: Dictionary, group: bool) -> void:
-	var id: int = s["id"]
-	var card: CardScreen
-	if group:
-		card = CardScreen.new("임무 %02d · 전원 참여" % id, [s["title"]])
-		card.add_line("이번 임무는 모두 함께 푼다!", Pal.GOLD, Pal.BIG)
-		card.add_line("자리에서 손가락으로 답할 준비를 하라.")
+func _begin_night(first_of_session: bool) -> void:
+	Game.start_night()
+	world.reset_night()
+	if Game.loop == 1 and Game.facts.is_empty():
+		Game.freeze()
+		await dialogue.say(Story.INTRO)
+		Game.add_fact("note")
+		Game.unfreeze()
 	else:
-		card = CardScreen.new("임무 %02d" % id, [s["title"]])
-		card.add_line("탐사대원 %d번, 앞으로!" % GameState.assignments[id], Pal.GOLD, Pal.BIG)
-		var next := GameState.next_player_after(id)
-		if next > 0:
-			card.add_line("다음 대기(부조종사): %d번 대원은 옆에 서 주세요." % next, Pal.DIM)
-	_show(card)
-	await card.advanced
+		var lines := ["12월 20일 17:30. 다시, 해 질 녘이다.", "관측 일지는 그대로 남아 있다."]
+		var hint := _hint()
+		if hint != "":
+			lines.append("")
+			lines.append("쪽지 뒷면에 글씨가 생겼다: \"" + hint + "\"")
+		var card := CardScript.new("%d번째 밤" % Game.loop, lines)
+		add_child(card)
+		Game.freeze()
+		await card.done
+		Game.unfreeze()
+	_ending = false
 
 
-func _prediction(p: Dictionary) -> void:
-	var lines := [p["question"], ""]
-	var choices: Array = p["choices"]
-	for i in choices.size():
-		lines.append("%d. %s" % [i + 1, choices[i]])
-	lines.append("")
-	lines.append("모두 손가락으로 예측하라!")
-	var card := CardScreen.new("예측 타임", lines, "Enter를 누르면 바로 임무 시작")
-	card.countdown = PREDICTION_SECONDS
-	card.allow_tap = false
-	_show(card)
-	await card.advanced
+func _hint() -> String:
+	for h in Story.HINTS:
+		var id: String = h[0]
+		if id == "polaris":
+			if not Game.freed.has("dolsoe") and not (Game.has("polaris_cas") or Game.has("polaris_dip")):
+				return h[1]
+		elif not Game.has(id):
+			return h[1]
+	return ""
 
 
-func _result(s: Dictionary, result: String) -> void:
-	var titles := {
-		"success": "임무 성공!",
-		"assisted": "본부 지원으로 임무 완료",
-		"group": "전원 임무 완료!",
-		"skipped": "임무 통과",
-	}
-	var gains := {
-		"success": GameState.GAIN_SUCCESS,
-		"assisted": GameState.GAIN_ASSISTED,
-		"group": GameState.GAIN_GROUP,
-		"skipped": GameState.GAIN_ASSISTED,
-	}
-	var gain: int = gains.get(result, GameState.GAIN_ASSISTED)
-	GameState.add_data(gain)
-
-	var card := CardScreen.new(titles.get(result, "임무 완료"), ["탐사 데이터 +%d%%" % gain],
-		"진행자: 예측이 맞은 대원이 많으면 B (보너스) · Enter로 계속")
-	if s.has("prediction"):
-		var p: Dictionary = s["prediction"]
-		card.add_line("예측 정답: %d번. %s" % [p["answer"] + 1, p["choices"][p["answer"]]], Pal.ACCENT)
-		card.add_line(p["explain"])
-	_show(card)
-	await card.advanced
+func _process(_delta: float) -> void:
+	var can_move := _overlay == null and not dialogue.visible and not _busy
+	world.active = can_move and Game.running
+	hud.visible = _overlay == null
+	if Game.running and Game.minutes >= Game.NIGHT_LEN and not _ending and not _busy:
+		_ending = true
+		_end_night()
 
 
-# ---- 진행자 키 ----
-
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	match event.keycode:
-		KEY_SPACE:
-			get_tree().paused = not get_tree().paused
-			_pause_label.visible = get_tree().paused
-		KEY_F11:
-			var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
-		KEY_H:
-			if _current is StageBase and not get_tree().paused:
-				(_current as StageBase).show_hint()
-		KEY_N:
-			if get_tree().paused:
-				return
-			if _current is StageBase:
-				(_current as StageBase).skip()
-			elif _current is CardScreen:
-				(_current as CardScreen).advance()
-			else:
-				return
-		KEY_B:
-			if not _hud.visible or _bonus_used or get_tree().paused:
-				return
-			_bonus_used = true
-			GameState.add_data(GameState.GAIN_BONUS)
-			_hud.show_toast("예측 보너스! 탐사 데이터 +%d%%" % GameState.GAIN_BONUS)
-		_:
+	if _overlay != null or dialogue.visible or _busy:
+		return
+	if event.keycode in [KEY_SPACE, KEY_E, KEY_ENTER, KEY_KP_ENTER]:
+		get_viewport().set_input_as_handled()
+		world.try_interact()
+	elif event.keycode == KEY_J:
+		get_viewport().set_input_as_handled()
+		open_journal()
+	elif event.keycode == KEY_F11:
+		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+# ---- 화면 덮개 ----
+
+func _open(view: Control) -> Control:
+	_close_overlay()
+	_overlay = view
+	overlay_layer.add_child(view)
+	view.tree_exited.connect(func(): if _overlay == view: _overlay = null)
+	return view
+
+
+func _close_overlay() -> void:
+	if _overlay != null and is_instance_valid(_overlay):
+		_overlay.queue_free()
+	_overlay = null
+
+
+func open_journal() -> void:
+	if _overlay == null and not dialogue.visible:
+		_open(JournalScript.new(false))
+
+
+func pick_evidence() -> Array:
+	var j: Control = _open(JournalScript.new(true))
+	var ids: Array = await j.picked
+	return ids
+
+
+# ---- 상호작용 ----
+
+func _on_interact(id: String) -> void:
+	if _busy:
+		return
+	_busy = true
+	match id:
+		"bench": await _bench()
+		"telescope": _open(SkyScript.new())
+		"pendulum": _open(PendulumScript.new())
+		"note": await _note()
+		"nut": await _artifact("keti")
+		"starmap": await _artifact("dolsoe")
+		"keti": await _talk_keti()
+		"dolsoe": await _talk_dolsoe()
+	_busy = false
+
+
+func _bench() -> void:
+	var pick: int = await dialogue.choose(["1시간 기다리기", "30분 기다리기", "그만두기"])
+	if pick == 2:
+		return
+	var mins := 60.0 if pick == 0 else 30.0
+	var fade := ColorRect.new()
+	fade.color = Color(0, 0, 0, 0)
+	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(fade)
+	var tw := create_tween()
+	tw.tween_property(fade, "color:a", 0.85, 0.4)
+	await tw.finished
+	Game.minutes = minf(Game.minutes + mins, Game.NIGHT_LEN)
+	var tw2 := create_tween()
+	tw2.tween_property(fade, "color:a", 0.0, 0.4)
+	await tw2.finished
+	fade.queue_free()
+
+
+func _note() -> void:
+	var lines := [["쪽지", Story.FACTS["note"]["text"]]]
+	var hint := _hint()
+	if Game.loop > 1 and hint != "":
+		lines.append(["쪽지 뒷면", hint])
+	await dialogue.say(lines)
+	Game.add_fact("note")
+
+
+func _artifact(who: String) -> void:
+	var thing := "누트 여신 그림" if who == "keti" else "천상열차분야지도"
+	var state: String = world.keti_state() if who == "keti" else world.dolsoe_state()
+	var text := ""
+	if state == "freed":
+		text = "%s 속 조각 하나가 금빛으로 빛난다. 누군가 무사히 돌아간 것 같다." % thing
+	elif state == "dormant":
+		text = ("%s 앞에 서니, 그림 속 인물이 잠든 듯 눈을 감고 있다." % thing) if who == "keti" else ("%s의 돌판 한쪽에 작은 사람 모양이 새겨져 있다. 잠든 것 같다." % thing)
+	else:
+		text = "%s에서 사람 모습이 사라졌다! 어디로 간 걸까?" % thing
+	await dialogue.say([["", text]])
+
+
+func _talk_keti() -> void:
+	if not Game.night.get("keti_met", false):
+		Game.night["keti_met"] = true
+		await dialogue.say(Story.KETI_WAKE)
+		Game.add_fact("keti_story")
+	else:
+		await dialogue.say(Story.KETI_YARD if world.keti_state() == "yard" else Story.KETI_AGAIN)
+	var pick: int = await dialogue.choose(["증거를 보여 준다", "그냥 둔다"])
+	if pick != 0:
+		return
+	var ids: Array = await pick_evidence()
+	if ids.is_empty():
+		return
+	var pend := "pendulum" in ids
+	var trail := "star_trail" in ids
+	if pend and trail:
+		await dialogue.say(Story.KETI_WIN)
+		Game.free_person("keti")
+		await _check_prototype_end()
+	elif trail:
+		await dialogue.say(Story.KETI_ONLY_TRAIL)
+	elif pend:
+		await dialogue.say(Story.KETI_ONLY_PEND)
+	else:
+		await dialogue.say(Story.KETI_WRONG)
+
+
+func _talk_dolsoe() -> void:
+	var state: String = world.dolsoe_state()
+	if not Game.night.get("dolsoe_met", false):
+		Game.night["dolsoe_met"] = true
+		await dialogue.say(Story.DOLSOE_WAKE)
+		Game.add_fact("dolsoe_story")
+		if state == "hall":
 			return
-	get_viewport().set_input_as_handled()
+	if state == "late":
+		await dialogue.say(Story.DOLSOE_LATE)
+		return
+	if state == "hall":
+		await dialogue.say([["돌쇠", "난 항구로 가서 배를 손보겠소. 북쪽이 어딘지 알게 되면 알려 주시오."]])
+		return
+	await dialogue.say(Story.DOLSOE_HARBOR)
+	var pick: int = await dialogue.choose(["증거를 보여 준다", "그냥 둔다"])
+	if pick != 0:
+		return
+	var ids: Array = await pick_evidence()
+	if ids.is_empty():
+		return
+	if "polaris_cas" in ids or "polaris_dip" in ids:
+		await dialogue.say(Story.DOLSOE_WIN if "polaris_cas" in ids else Story.DOLSOE_WIN_DIPPER)
+		Game.night["sailing"] = true
+		Game.free_person("dolsoe")
+		await _check_prototype_end()
+	else:
+		await dialogue.say(Story.DOLSOE_WRONG)
+
+
+func _check_prototype_end() -> void:
+	if Game.freed.has("keti") and Game.freed.has("dolsoe"):
+		await dialogue.say(Story.PROTOTYPE_END)
+		var pick: int = await dialogue.choose(["계속 둘러보기", "처음부터 다시"])
+		if pick == 1:
+			Game.new_game()
+			_close_overlay()
+			await _begin_night(false)
+
+
+func _end_night() -> void:
+	_busy = true
+	_close_overlay()
+	Game.running = false
+	await dialogue.say(Story.SUNRISE)
+	Game.next_loop()
+	_busy = false
+	await _begin_night(false)
