@@ -3,9 +3,9 @@ extends Control
 ##
 ##   바깥 (1층 높이)   0 ~ 420 항구(돌쇠의 배) · 420 ~ 900 마당(벤치)
 ##   천문대 900 ~ 1540
-##     3층  옥상 관측 데크: 망원경, 돔
-##     2층  전시실 '옛사람들의 하늘': 누트 여신 그림, 천상열차분야지도, 아직 잠든 유물들
-##     1층  로비: 푸코 진자, 선생님 책상, 지하로 가는 문(잠김)
+##     3층  옥상 관측 데크: 북쪽 하늘 망원경, 돔(남쪽 하늘 망원경, 관측 기록 보관함)
+##     2층  전시실 '옛사람들의 하늘': 유물 6점 (등장인물이 깨어나는 곳)
+##     1층  로비: 푸코 진자, 지구 공전 모형, 선생님 책상, 지하로 가는 문(잠김)
 ##     지하 1층  (잠김) 우주 주소 조각 7개를 모으면 열림
 ## 층 이동은 왼쪽 계단에서 합니다. (main.gd에서 층을 고름)
 
@@ -30,25 +30,36 @@ const NPC_SPEED := 55.0
 const REACH := 24.0
 
 const SPOTS := [
+	{"id": "binoculars", "floor": 0, "x": 40.0, "label": "부두 쌍안경으로 바다 보기"},
 	{"id": "bench", "floor": 0, "x": 640.0, "label": "벤치에 앉아 기다리기"},
 	{"id": "stairs", "floor": 0, "x": STAIRS_X, "label": "계단"},
-	{"id": "note", "floor": 0, "x": 1090.0, "label": "선생님 책상"},
-	{"id": "pendulum", "floor": 0, "x": 1290.0, "label": "푸코 진자 살펴보기"},
+	{"id": "note", "floor": 0, "x": 1060.0, "label": "선생님 책상"},
+	{"id": "orrery", "floor": 0, "x": 1180.0, "label": "지구 공전 모형"},
+	{"id": "pendulum", "floor": 0, "x": 1320.0, "label": "푸코 진자 살펴보기"},
 	{"id": "b1door", "floor": 0, "x": 1490.0, "label": "지하로 내려가는 문"},
 	{"id": "stairs", "floor": 1, "x": STAIRS_X, "label": "계단"},
-	{"id": "tablet", "floor": 1, "x": 1030.0, "label": "점토판 (바빌로니아 세계 지도)"},
-	{"id": "bamboo", "floor": 1, "x": 1110.0, "label": "죽간 (옛 중국의 천문 기록)"},
-	{"id": "nut", "floor": 1, "x": 1200.0, "label": "누트 여신 그림 (복제품)"},
-	{"id": "vase", "floor": 1, "x": 1320.0, "label": "그리스 도기"},
+	{"id": "tablet", "floor": 1, "x": 1010.0, "label": "바빌로니아 세계 지도 (점토판)"},
+	{"id": "bamboo", "floor": 1, "x": 1090.0, "label": "옛 중국의 천문 기록 (죽간)"},
+	{"id": "nut", "floor": 1, "x": 1170.0, "label": "누트 여신 그림 (복제품)"},
+	{"id": "vase", "floor": 1, "x": 1260.0, "label": "그리스 도기"},
+	{"id": "calendar", "floor": 1, "x": 1350.0, "label": "절기 농사 달력"},
 	{"id": "starmap", "floor": 1, "x": 1450.0, "label": "천상열차분야지도 (복각본)"},
 	{"id": "stairs", "floor": 2, "x": STAIRS_X, "label": "계단"},
-	{"id": "telescope", "floor": 2, "x": 1130.0, "label": "망원경으로 하늘 보기"},
+	{"id": "telescope", "floor": 2, "x": 1100.0, "label": "망원경으로 북쪽 하늘 보기"},
+	{"id": "dome", "floor": 2, "x": 1440.0, "label": "돔 안의 큰 망원경"},
 ]
-const KETI_HOME := Vector2(1200.0, 1)        # (x, 층)
-const KETI_ROOF := Vector2(1250.0, 2)
-const DOLSOE_HOME := Vector2(1450.0, 1)
-const DOLSOE_HARBOR := Vector2(260.0, 0)
-const BOAT_X := 140.0
+
+## 등장인물: 깨어나는 유물, 깨어나는 시각, 시간표 [시각, (x, 층)]
+const NPC_PLAN := {
+	"keti": {"home": "nut", "wake": "18:00", "plan": [["18:00", Vector2(1190, 1)], ["21:00", Vector2(1240, 2)]]},
+	"teo": {"home": "vase", "wake": "18:00", "plan": [["18:00", Vector2(1250, 0)], ["23:30", Vector2(1300, 2)]]},
+	"ina": {"home": "tablet", "wake": "18:30", "plan": [["18:30", Vector2(110, 0)]]},
+	"dolsoe": {"home": "starmap", "wake": "19:00", "plan": [["19:00", Vector2(1425, 1)], ["20:00", Vector2(260, 0)]]},
+	"bori": {"home": "calendar", "wake": "19:00", "plan": [["19:00", Vector2(1125, 0)]]},
+	"hwi": {"home": "bamboo", "wake": "20:00", "plan": [["20:00", Vector2(1370, 2)]]},
+}
+const BOAT_X := 160.0
+const FERRY_X := 340.0             # 섬 연락선 (19:30 출항)
 
 var player_x := 1130.0
 var floor_i := 2                  # 지금 있는 층 (0 = 1층/바깥, 1 = 2층, 2 = 3층 옥상)
@@ -61,8 +72,7 @@ var vy := 0.0
 var jumps := 0
 var prompt_rect := Rect2()        # 화면에 보이는 [확인] 말풍선 (누르면 상호작용)
 var nearest := ""
-var keti := KETI_HOME
-var dolsoe := DOLSOE_HOME
+var npc := {}                     # 등장인물 id -> 지금 위치 (x, 층)
 var boat_x := BOAT_X
 var cam := Vector2.ZERO
 var _t := 0.0
@@ -71,6 +81,7 @@ var _t := 0.0
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reset_night()
 
 
 func reset_night() -> void:
@@ -79,8 +90,9 @@ func reset_night() -> void:
 	y_off = 0.0
 	vy = 0.0
 	jumps = 0
-	keti = KETI_HOME
-	dolsoe = DOLSOE_HOME
+	npc.clear()
+	for id in NPC_PLAN:
+		npc[id] = Vector2(spot_x(NPC_PLAN[id]["home"]), 1)
 	boat_x = BOAT_X
 	facing = -1
 	_snap_camera()
@@ -102,26 +114,39 @@ func floor_y(f: int) -> float:
 
 # ---- 등장인물의 시간표 ----
 
-static func keti_state() -> String:
-	if Game.freed.has("keti"):
-		return "freed"
-	if Game.minutes < Game.at("18:00"):
-		return "dormant"
-	if Game.minutes < Game.at("21:00"):
-		return "hall"
-	return "yard"
+static func spot_x(id: String) -> float:
+	for sp in SPOTS:
+		if sp["id"] == id:
+			return sp["x"]
+	return 0.0
 
 
-static func dolsoe_state() -> String:
-	if Game.freed.has("dolsoe"):
+## "freed"(아침으로 돌아감) / "dormant"(아직 잠듦) / "awake" / 돌쇠만: "hall", "harbor", "late"
+static func npc_state(id: String) -> String:
+	if Game.freed.has(id):
 		return "freed"
-	if Game.minutes < Game.at("19:00"):
+	if Game.minutes < Game.at(NPC_PLAN[id]["wake"]):
 		return "dormant"
-	if Game.minutes < Game.at("20:00"):
-		return "hall"
-	if Game.minutes < Game.at("23:00"):
-		return "harbor"
-	return "late"
+	if id == "dolsoe":
+		if Game.minutes < Game.at("20:00"):
+			return "hall"
+		return "harbor" if Game.minutes < Game.at("23:00") else "late"
+	return "awake"
+
+
+static func npc_target(id: String) -> Vector2:
+	var target: Vector2 = NPC_PLAN[id]["plan"][0][1]
+	for step in NPC_PLAN[id]["plan"]:
+		if Game.minutes >= Game.at(step[0]):
+			target = step[1]
+	return target
+
+
+func npc_visible(id: String) -> bool:
+	var st := npc_state(id)
+	if st == "freed" or st == "dormant":
+		return false
+	return not (id == "dolsoe" and Game.night.get("sailing", false))
 
 
 ## 사람을 목표 자리로 걷게 합니다. 층이 다르면 계단에서 나타납니다.
@@ -155,12 +180,9 @@ func _process(delta: float) -> void:
 			vy = 0.0
 			jumps = 0
 
-	var ks := keti_state()
-	if ks == "hall" or ks == "yard":
-		keti = _walk_npc(keti, KETI_HOME if ks == "hall" else KETI_ROOF, delta)
-	var ds := dolsoe_state()
-	if ds != "dormant" and ds != "freed":
-		dolsoe = _walk_npc(dolsoe, DOLSOE_HOME if ds == "hall" else DOLSOE_HARBOR, delta)
+	for id in NPC_PLAN:
+		if npc_visible(id):
+			npc[id] = _walk_npc(npc[id], npc_target(id), delta)
 	if Game.night.get("sailing", false):
 		boat_x += 28.0 * delta
 
@@ -196,12 +218,9 @@ func targets() -> Array:
 	for s in SPOTS:
 		if s["floor"] == floor_i:
 			out.append(s)
-	var ks := keti_state()
-	if (ks == "hall" or ks == "yard") and int(keti.y) == floor_i:
-		out.append({"id": "keti", "x": keti.x, "label": "케티와 이야기하기"})
-	var ds := dolsoe_state()
-	if ds != "dormant" and ds != "freed" and not Game.night.get("sailing", false) and int(dolsoe.y) == floor_i:
-		out.append({"id": "dolsoe", "x": dolsoe.x, "label": "돌쇠와 이야기하기"})
+	for id in NPC_PLAN:
+		if npc_visible(id) and int(npc[id].y) == floor_i:
+			out.append({"id": id, "x": npc[id].x, "label": "%s와 이야기하기" % Story.NPC[id]["name"], "npc": true})
 	return out
 
 
@@ -210,6 +229,8 @@ func _find_nearest() -> String:
 	var best_d := REACH
 	for t in targets():
 		var d := absf(float(t["x"]) - player_x)
+		if t.has("npc"):
+			d -= 10.0                      # 사람과 물건이 겹치면 사람과 먼저 이야기합니다
 		if d < best_d:
 			best_d = d
 			best = t["id"]
@@ -275,6 +296,20 @@ func _draw_harbor() -> void:
 		draw_rect(Rect2(x, g - 4, 1, 6), Color8(60, 42, 38))
 	for x in range(10, 420, 60):
 		draw_rect(Rect2(x, g + 2, 4, 40), Color8(50, 36, 34))
+	# 섬 연락선 (19:30에 떠남)
+	if Game.minutes < Game.at("19:30"):
+		var fx := FERRY_X
+		var fy := g + 12
+		draw_colored_polygon(PackedVector2Array([Vector2(fx - 46, fy - 14), Vector2(fx + 46, fy - 14), Vector2(fx + 38, fy), Vector2(fx - 40, fy)]), Color8(200, 204, 220))
+		draw_rect(Rect2(fx - 26, fy - 28, 46, 14), Color8(170, 176, 200))
+		for i in 6:
+			draw_rect(Rect2(fx - 22 + i * 7, fy - 23, 3, 3), Color8(255, 220, 140))
+		draw_rect(Rect2(fx - 1, fy - 46, 2, 18), Color8(90, 90, 110))
+		draw_rect(Rect2(fx - 2, fy - 48, 4, 3), Color8(255, 240, 200))
+		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 52), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+	# 쌍안경
+	draw_rect(Rect2(36, g - 18, 2, 14), Color8(80, 80, 100))
+	draw_rect(Rect2(31, g - 24, 12, 6), Color8(60, 120, 160))
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
 		if boat_x < WORLD_W:
 			var bob := sin(_t * 1.5) * 1.5
@@ -355,40 +390,52 @@ func _draw_building() -> void:
 
 	# 1층 로비
 	draw_string(font, Vector2(B_X0 + 70, f0 - 84), "1층 로비", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_rect(Rect2(1074, f0 - 22, 34, 4), Color8(120, 84, 60))      # 선생님 책상
-	draw_rect(Rect2(1076, f0 - 18, 2, 18), Color8(80, 56, 44))
-	draw_rect(Rect2(1104, f0 - 18, 2, 18), Color8(80, 56, 44))
-	draw_rect(Rect2(1084, f0 - 25, 10, 3), Color8(244, 240, 228))
+	draw_rect(Rect2(1044, f0 - 22, 34, 4), Color8(120, 84, 60))      # 선생님 책상
+	draw_rect(Rect2(1046, f0 - 18, 2, 18), Color8(80, 56, 44))
+	draw_rect(Rect2(1074, f0 - 18, 2, 18), Color8(80, 56, 44))
+	draw_rect(Rect2(1054, f0 - 25, 10, 3), Color8(244, 240, 228))
+	draw_rect(Rect2(1170, f0 - 20, 20, 20), Color8(90, 78, 110))      # 지구 공전 모형 (받침대)
+	draw_circle(Vector2(1180, f0 - 32), 5, Color8(255, 210, 110))
+	draw_arc(Vector2(1180, f0 - 32), 14, 0, TAU, 24, Color(0.8, 0.8, 1.0, 0.5), 1.0)
+	var orb := Vector2(1180, f0 - 32) + Vector2.from_angle(_t * 0.8) * Vector2(14, 5)
+	draw_circle(orb, 2.5, Color8(90, 150, 230))
 	var swing := sin(_t * TAU / 4.0) * 16.0                            # 푸코 진자
-	draw_line(Vector2(1290, f0 - 100), Vector2(1290 + swing, f0 - 22), Color8(200, 200, 220), 1)
-	draw_circle(Vector2(1290 + swing, f0 - 20), 5, Color8(230, 190, 90))
-	draw_rect(Rect2(1250, f0 - 4, 80, 3), Color8(90, 80, 120))
+	draw_line(Vector2(1320, f0 - 100), Vector2(1320 + swing, f0 - 22), Color8(200, 200, 220), 1)
+	draw_circle(Vector2(1320 + swing, f0 - 20), 5, Color8(230, 190, 90))
+	draw_rect(Rect2(1280, f0 - 4, 80, 3), Color8(90, 80, 120))
 	draw_rect(Rect2(1478, f0 - 40, 26, 40), Color8(54, 48, 66))      # 지하로 가는 문
 	draw_rect(Rect2(1480, f0 - 38, 22, 38), Color8(40, 36, 52))
 	draw_circle(Vector2(1491, f0 - 22), 3, Pal.GOLD)
 
 	# 2층 전시실
 	draw_string(font, Vector2(B_X0 + 70, f1 - 84), "2층 전시실 · 옛사람들의 하늘", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	_draw_case(1030.0, f1, Color8(170, 130, 90))                       # 점토판
-	_draw_case(1110.0, f1, Color8(190, 170, 110))                      # 죽간
-	_draw_case(1320.0, f1, Color8(170, 90, 60))                        # 그리스 도기
+	_draw_case(1010.0, f1, Color8(170, 130, 90), "tablet")             # 점토판
+	_draw_case(1090.0, f1, Color8(190, 170, 110), "bamboo")            # 죽간
+	_draw_case(1260.0, f1, Color8(170, 90, 60), "vase")                # 그리스 도기
 	# 누트 여신 그림
-	draw_rect(Rect2(1176, f1 - 70, 48, 36), Color8(196, 160, 100))
-	draw_rect(Rect2(1178, f1 - 68, 44, 32), Color8(28, 40, 96))
-	draw_arc(Vector2(1200, f1 - 40), 18, PI, TAU, 16, Color8(236, 188, 76), 2)
-	draw_line(Vector2(1180, f1 - 42), Vector2(1220, f1 - 42), Color8(90, 150, 80), 1)
-	if keti_state() == "dormant":
-		draw_rect(Rect2(1198, f1 - 56, 4, 8), Color8(244, 240, 228))
-	if Game.freed.has("keti"):
-		draw_rect(Rect2(1174, f1 - 72, 52, 40), Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0)), false, 2.0)
+	draw_rect(Rect2(1146, f1 - 70, 48, 36), Color8(196, 160, 100))
+	draw_rect(Rect2(1148, f1 - 68, 44, 32), Color8(28, 40, 96))
+	draw_arc(Vector2(1170, f1 - 40), 18, PI, TAU, 16, Color8(236, 188, 76), 2)
+	draw_line(Vector2(1150, f1 - 42), Vector2(1190, f1 - 42), Color8(90, 150, 80), 1)
+	if npc_state("keti") == "dormant":
+		draw_rect(Rect2(1168, f1 - 56, 4, 8), Color8(244, 240, 228))
+	_glow_if_freed("keti", Rect2(1144, f1 - 72, 52, 40))
+	# 절기 농사 달력 (족자)
+	draw_rect(Rect2(1336, f1 - 78, 28, 2), Color8(120, 84, 60))
+	draw_rect(Rect2(1338, f1 - 76, 24, 44), Color8(232, 222, 196))
+	for i in 4:
+		draw_rect(Rect2(1341, f1 - 72 + i * 10, 18, 1), Color8(170, 150, 110))
+	draw_circle(Vector2(1350, f1 - 64), 3, Color8(220, 80, 70))
+	if npc_state("bori") == "dormant":
+		draw_rect(Rect2(1348, f1 - 48, 4, 7), Color8(226, 196, 110))
+	_glow_if_freed("bori", Rect2(1334, f1 - 80, 32, 52))
 	# 천상열차분야지도 (돌판)
 	draw_rect(Rect2(1430, f1 - 80, 40, 80), Color8(110, 108, 118))
 	draw_rect(Rect2(1434, f1 - 76, 32, 32), Color8(80, 78, 90))
 	draw_arc(Vector2(1450, f1 - 60), 14, 0, TAU, 20, Color8(170, 168, 180), 1)
 	for i in 14:
 		draw_rect(Rect2(1437 + (i * 7) % 26, f1 - 73 + (i * 11) % 26, 1, 1), Color8(230, 230, 240))
-	if Game.freed.has("dolsoe"):
-		draw_rect(Rect2(1428, f1 - 82, 44, 82), Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0)), false, 2.0)
+	_glow_if_freed("dolsoe", Rect2(1428, f1 - 82, 44, 82))
 
 	# 3층 옥상 관측 데크
 	for x in range(int(B_X0), int(B_X1), 14):
@@ -401,7 +448,7 @@ func _draw_building() -> void:
 	draw_rect(Rect2(1384, f2, 112, 10), slab)
 	draw_rect(Rect2(1432, f2 - 56, 16, 56), Color8(60, 40, 40))
 	draw_rect(Rect2(1434, f2 - 52, 12, 52), Color8(255, 196, 120))
-	var tx := 1130.0                                                     # 망원경
+	var tx := 1100.0                                                     # 망원경
 	draw_line(Vector2(tx, f2 - 26), Vector2(tx - 12, f2), Color8(60, 58, 90), 2)
 	draw_line(Vector2(tx, f2 - 26), Vector2(tx + 12, f2), Color8(60, 58, 90), 2)
 	draw_colored_polygon(PackedVector2Array([Vector2(tx - 18, f2 - 22), Vector2(tx + 16, f2 - 40), Vector2(tx + 19, f2 - 35), Vector2(tx - 15, f2 - 17)]), Color8(224, 226, 240))
@@ -411,27 +458,34 @@ func _draw_building() -> void:
 	draw_rect(Rect2(STAIRS_X - 10, f2 - 26, 20, 26), Color8(40, 36, 60))
 
 
-## 아직 잠들어 있는 유물이 든 유리 진열장
-func _draw_case(x: float, f: float, color: Color) -> void:
+## 유물이 든 유리 진열장
+func _draw_case(x: float, f: float, color: Color, spot: String) -> void:
 	draw_rect(Rect2(x - 14, f - 18, 28, 18), Color8(90, 78, 110))
 	draw_rect(Rect2(x - 12, f - 44, 24, 26), Color(0.7, 0.85, 1.0, 0.12))
 	draw_rect(Rect2(x - 12, f - 44, 24, 26), Color(0.7, 0.85, 1.0, 0.35), false, 1.0)
 	draw_rect(Rect2(x - 6, f - 34, 12, 14), color)
+	for id in NPC_PLAN:
+		if NPC_PLAN[id]["home"] == spot:
+			_glow_if_freed(id, Rect2(x - 14, f - 46, 28, 30))
+
+
+func _glow_if_freed(id: String, r: Rect2) -> void:
+	if Game.freed.has(id):
+		draw_rect(r, Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0)), false, 2.0)
 
 
 func _draw_people() -> void:
-	var ks := keti_state()
-	if ks == "hall" or ks == "yard":
-		var feet := Vector2(keti.x, floor_y(int(keti.y)) - 2 + sin(_t * 2.0))
-		draw_circle(feet + Vector2(0, -14), 20, Color(0.5, 0.9, 1.0, 0.12))
-		Sprites.draw_aura(self, Sprites.KETI, feet, Color(0.5, 0.92, 0.97, 0.8))
-		Sprites.draw(self, Sprites.KETI, Sprites.KETI_PAL, feet, player_x < keti.x)
-	var ds := dolsoe_state()
-	if ds != "dormant" and ds != "freed" and not Game.night.get("sailing", false):
-		var on_pier := int(dolsoe.y) == 0 and dolsoe.x < 420
-		var feet := Vector2(dolsoe.x, floor_y(int(dolsoe.y)) - (4 if on_pier else 0))
-		Sprites.draw_aura(self, Sprites.DOLSOE, feet, Color(0.5, 0.92, 0.97, 0.8))
-		Sprites.draw(self, Sprites.DOLSOE, Sprites.DOLSOE_PAL, feet, player_x < dolsoe.x)
+	for id in NPC_PLAN:
+		if not npc_visible(id):
+			continue
+		var p: Vector2 = npc[id]
+		var f := int(p.y)
+		var on_pier := f == 0 and p.x < 420
+		var feet := Vector2(p.x, floor_y(f) - (4 if on_pier else 0))
+		if id == "keti":
+			feet.y += sin(_t * 2.0) - 2.0
+		Sprites.draw_aura(self, Sprites.rows(id), feet, Color(0.5, 0.92, 0.97, 0.8))
+		Sprites.draw(self, Sprites.rows(id), Sprites.pal(id), feet, player_x < p.x)
 	var bob := 1.0 if int(walk_t * 10.0) % 2 == 1 and y_off == 0.0 else 0.0
 	var on_pier := floor_i == 0 and player_x < 420
 	var ground_y := floor_y(floor_i) - (4 if on_pier else 0)

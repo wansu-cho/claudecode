@@ -24,11 +24,17 @@ const STARS := {
 	"capella": [5.278, 46.0, 0.1], "deneb": [20.690, 45.28, 1.3], "vega": [18.616, 38.78, 0.0], "mirfak": [3.405, 49.86, 1.8],
 	"castor": [7.577, 31.89, 1.6], "pollux": [7.755, 28.03, 1.1], "algol": [3.136, 40.96, 2.1], "alderamin": [21.31, 62.59, 2.5],
 	"almach": [2.065, 42.33, 2.1], "eltanin": [17.943, 51.49, 2.2], "menkalinan": [5.992, 44.95, 1.9],
+	# 겨울 남쪽 하늘 (돔 망원경)
+	"canopus": [6.399, -52.70, -0.7],           # 노인성: 북위 34°에서 겨우 뜨고, 서울에서는 거의 안 보임
+	"sirius": [6.752, -16.72, -1.5], "procyon": [7.655, 5.22, 0.4], "aldebaran": [4.599, 16.51, 0.9],
+	"betelgeuse": [5.919, 7.41, 0.5], "rigel": [5.242, -8.20, 0.1], "bellatrix": [5.419, 6.35, 1.6], "saiph": [5.796, -9.67, 2.1],
+	"alnitak": [5.679, -1.94, 1.7], "alnilam": [5.603, -1.20, 1.7], "mintaka": [5.533, -0.30, 2.2],
 }
 const BIG_DIPPER := ["dubhe", "merak", "phecda", "megrez", "alioth", "mizar", "alkaid"]
 const BIG_DIPPER_LINES := [["dubhe", "merak"], ["merak", "phecda"], ["phecda", "megrez"], ["megrez", "dubhe"], ["megrez", "alioth"], ["alioth", "mizar"], ["mizar", "alkaid"]]
 const CASSIOPEIA := ["caph", "schedar", "navi", "ruchbah", "segin"]
 const CASSIOPEIA_LINES := [["caph", "schedar"], ["schedar", "navi"], ["navi", "ruchbah"], ["ruchbah", "segin"]]
+const ORION_LINES := [["betelgeuse", "bellatrix"], ["betelgeuse", "alnitak"], ["bellatrix", "mintaka"], ["alnitak", "alnilam"], ["alnilam", "mintaka"], ["alnitak", "saiph"], ["mintaka", "rigel"]]
 const LITTLE_DIPPER := ["polaris", "kochab", "pherkad", "yildun", "eps_umi", "zeta_umi", "eta_umi"]
 
 static var _field: Array = []

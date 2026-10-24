@@ -37,14 +37,18 @@ func _ready() -> void:
 	sub.size = Vector2(592, 16)
 	add_child(sub)
 
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(24, 66)
+	scroll.size = Vector2(256, 226)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
 	_list = VBoxContainer.new()
-	_list.position = Vector2(24, 66)
 	_list.add_theme_constant_override("separation", 3)
-	add_child(_list)
+	scroll.add_child(_list)
 	for id in Story.FACT_ORDER:
 		var known := Game.has(id)
 		var b := Pal.button(Story.FACTS[id]["title"] if known else "???")
-		b.custom_minimum_size = Vector2(250, 20)
+		b.custom_minimum_size = Vector2(244, 20)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.disabled = not known
 		b.pressed.connect(_on_fact.bind(id, b))

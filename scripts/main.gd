@@ -16,6 +16,9 @@ const CardScript := preload("res://scripts/ui/card.gd")
 const JournalScript := preload("res://scripts/ui/journal_view.gd")
 const SkyScript := preload("res://scripts/views/sky_view.gd")
 const PendulumScript := preload("res://scripts/views/pendulum_view.gd")
+const DomeScript := preload("res://scripts/views/dome_view.gd")
+const ShipScript := preload("res://scripts/views/ship_view.gd")
+const OrreryScript := preload("res://scripts/views/orrery_view.gd")
 
 var world: Control
 var hud: Control
@@ -83,13 +86,19 @@ func _begin_night(first_of_session: bool) -> void:
 	_ending = false
 
 
+## 아직 풀지 못한 것 중 첫 번째 힌트
 func _hint() -> String:
 	for h in Story.HINTS:
 		var id: String = h[0]
-		if id == "polaris":
-			if not Game.freed.has("dolsoe") and not (Game.has("polaris_cas") or Game.has("polaris_dip")):
-				return h[1]
-		elif not Game.has(id):
+		var todo := false
+		match id:
+			"polaris": todo = not Game.freed.has("dolsoe") and not (Game.has("polaris_cas") or Game.has("polaris_dip"))
+			"orrery": todo = not Game.freed.has("bori") and not (Game.has("perihelion") and Game.has("tilt_seasons"))
+			"ship_horizon": todo = not Game.freed.has("ina") and not Game.has(id)
+			"eclipse_round": todo = not Game.freed.has("hwi") and not Game.has(id)
+			"canopus": todo = not Game.freed.has("teo") and not Game.has(id)
+			_: todo = not Game.has(id)
+		if todo:
 			return h[1]
 	return ""
 
@@ -160,14 +169,16 @@ func _on_interact(id: String) -> void:
 		"bench": await _bench()
 		"stairs": await _stairs()
 		"b1door": await _b1door()
-		"tablet", "bamboo", "vase": await dialogue.say([["", Story.SLEEPING[id]]])
+		"tablet", "bamboo", "vase", "calendar", "nut", "starmap": await _artifact(id)
 		"telescope": _open(SkyScript.new())
+		"dome": _open(DomeScript.new())
+		"binoculars": _open(ShipScript.new())
+		"orrery": _open(OrreryScript.new())
 		"pendulum": _open(PendulumScript.new())
 		"note": await _note()
-		"nut": await _artifact("keti")
-		"starmap": await _artifact("dolsoe")
-		"keti": await _talk_keti()
-		"dolsoe": await _talk_dolsoe()
+		_:
+			if Story.NPC.has(id):
+				await _talk(id)
 	_busy = false
 
 
@@ -225,78 +236,83 @@ func _note() -> void:
 	Game.add_fact("note")
 
 
-func _artifact(who: String) -> void:
-	var thing := "누트 여신 그림" if who == "keti" else "천상열차분야지도"
-	var state: String = world.keti_state() if who == "keti" else world.dolsoe_state()
-	var text := ""
+## 유물을 조사했을 때: 잠들어 있음 / 사람이 빠져나감 / 아침으로 돌아감
+func _artifact(spot: String) -> void:
+	var who := ""
+	for id in world.NPC_PLAN:
+		if world.NPC_PLAN[id]["home"] == spot:
+			who = id
+	var state: String = world.npc_state(who) if who != "" else "dormant"
+	var text: String = Story.SLEEPING[spot]
 	if state == "freed":
-		text = "%s 속 조각 하나가 금빛으로 빛난다. 누군가 무사히 돌아간 것 같다." % thing
-	elif state == "dormant":
-		text = ("%s 앞에 서니, 그림 속 인물이 잠든 듯 눈을 감고 있다." % thing) if who == "keti" else ("%s의 돌판 한쪽에 작은 사람 모양이 새겨져 있다. 잠든 것 같다." % thing)
-	else:
-		text = "%s에서 사람 모습이 사라졌다! 어디로 간 걸까?" % thing
+		text = "유물 속 조각 하나가 금빛으로 빛난다. %s는 무사히 아침으로 돌아간 것 같다." % Story.NPC[who]["name"]
+	elif state != "dormant":
+		text = "유물 속 사람 모습이 사라졌다! 어디로 간 걸까?"
 	await dialogue.say([["", text]])
 
 
-func _talk_keti() -> void:
-	if not Game.night.get("keti_met", false):
-		Game.night["keti_met"] = true
-		await dialogue.say(Story.KETI_WAKE)
-		Game.add_fact("keti_story")
-	else:
-		await dialogue.say(Story.KETI_YARD if world.keti_state() == "yard" else Story.KETI_AGAIN)
-	var pick: int = await dialogue.choose(["증거를 보여 준다", "그냥 둔다"])
-	if pick != 0:
-		return
-	var ids: Array = await pick_evidence()
-	if ids.is_empty():
-		return
-	var pend := "pendulum" in ids
-	var trail := "star_trail" in ids
-	if pend and trail:
-		await dialogue.say(Story.KETI_WIN)
-		Game.free_person("keti")
-		await _check_prototype_end()
-	elif trail:
-		await dialogue.say(Story.KETI_ONLY_TRAIL)
-	elif pend:
-		await dialogue.say(Story.KETI_ONLY_PEND)
-	else:
-		await dialogue.say(Story.KETI_WRONG)
-
-
-func _talk_dolsoe() -> void:
-	var state: String = world.dolsoe_state()
-	if not Game.night.get("dolsoe_met", false):
-		Game.night["dolsoe_met"] = true
-		await dialogue.say(Story.DOLSOE_WAKE)
-		Game.add_fact("dolsoe_story")
+## 등장인물과 이야기하고, 증거를 보여 줍니다. (대사와 필요한 증거는 story.gd의 NPC 표)
+func _talk(id: String) -> void:
+	var info: Dictionary = Story.NPC[id]
+	var state: String = world.npc_state(id)
+	var met_key := id + "_met"
+	if not Game.night.get(met_key, false):
+		Game.night[met_key] = true
+		await dialogue.say(info["wake"])
+		Game.add_fact(info["story"])
 		if state == "hall":
 			return
+	elif state == "late":
+		await dialogue.say(info["late"])
+		return
+	elif state == "hall":
+		await dialogue.say(info["hall"])
+		return
+	else:
+		await dialogue.say(info["again"])
 	if state == "late":
-		await dialogue.say(Story.DOLSOE_LATE)
+		await dialogue.say(info["late"])
 		return
-	if state == "hall":
-		await dialogue.say([["돌쇠", "난 항구로 가서 배를 손보겠소. 북쪽이 어딘지 알게 되면 알려 주시오."]])
+	var options := ["증거를 보여 준다", "그냥 둔다"]
+	if info.get("hints", false):
+		options.insert(1, "힌트를 듣는다")
+	var pick: int = await dialogue.choose(options)
+	if options[pick] == "힌트를 듣는다":
+		var hint := _hint()
+		await dialogue.say([[info["name"], hint if hint != "" else "이제 내가 알려 줄 건 없어. 정말 대단해!"]])
 		return
-	await dialogue.say(Story.DOLSOE_HARBOR)
-	var pick: int = await dialogue.choose(["증거를 보여 준다", "그냥 둔다"])
-	if pick != 0:
+	if options[pick] != "증거를 보여 준다":
 		return
 	var ids: Array = await pick_evidence()
 	if ids.is_empty():
 		return
-	if "polaris_cas" in ids or "polaris_dip" in ids:
-		await dialogue.say(Story.DOLSOE_WIN if "polaris_cas" in ids else Story.DOLSOE_WIN_DIPPER)
-		Game.night["sailing"] = true
-		Game.free_person("dolsoe")
-		await _check_prototype_end()
+	var ok := false
+	if info.has("need_any"):
+		for f in info["need_any"]:
+			if f in ids:
+				ok = true
 	else:
-		await dialogue.say(Story.DOLSOE_WRONG)
+		ok = true
+		for f in info["need"]:
+			if f not in ids:
+				ok = false
+	if ok:
+		await dialogue.say(info["win"])
+		if id == "dolsoe":
+			Game.night["sailing"] = true
+		Game.free_person(id)
+		await _check_prototype_end()
+		return
+	var partial: Dictionary = info.get("partial", {})
+	for f in ids:
+		if partial.has(f):
+			await dialogue.say(partial[f])
+			return
+	await dialogue.say(info["wrong"])
 
 
 func _check_prototype_end() -> void:
-	if Game.freed.has("keti") and Game.freed.has("dolsoe"):
+	if Game.freed.size() >= Story.NPC.size():
 		await dialogue.say(Story.PROTOTYPE_END)
 		var pick: int = await dialogue.choose(["계속 둘러보기", "처음부터 다시"])
 		if pick == 1:

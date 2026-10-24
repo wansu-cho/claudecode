@@ -108,6 +108,160 @@ const DOLSOE_PAL := {
 	"G": Color8(110, 110, 120), "g": Color8(80, 80, 90), "w": Color8(236, 232, 220), "Z": Color8(190, 160, 90),
 }
 
+const TEO := [
+	"....OOOOOOO.....",
+	"...OHhHhHhHO....",
+	"..OHhHhHhHhHO...",
+	"..OhHhHhHhHhO...",
+	".OHhHSSSSSHhHO..",
+	".OhHSSSSSSSHhO..",
+	".OHSSESSSESSHO..",
+	".OHSSESSSESSHO..",
+	"..OSCSSSSSCSO...",
+	"..OSSSSmmSSSO...",
+	"...OSSSSSSSO....",
+	"....OssssssO....",
+	"...OWWWWWWBO....",
+	"..OSWWWWWBWWO...",
+	".OSSWWWWBWWWSO..",
+	".OS.WWWBWWWW.SO.",
+	"..O.WWBWWWWW.O..",
+	"....WWWWWWWWO...",
+	"...OWWWWWWWWO...",
+	"...OBBBBBBBBO...",
+	"....OSSO.OSSO...",
+	"....OSSO.OSSO...",
+	"...OTTTO.OTTTO..",
+	"...OOOO...OOOO..",
+]
+const TEO_PAL := {
+	"O": Color8(27, 22, 48), "H": Color8(110, 70, 40), "h": Color8(150, 100, 56), "S": Color8(214, 166, 120),
+	"s": Color8(176, 128, 92), "E": Color8(27, 22, 48), "C": Color8(222, 128, 110), "m": Color8(160, 96, 80),
+	"W": Color8(240, 236, 226), "B": Color8(60, 100, 190), "T": Color8(150, 110, 60),
+}
+
+const INA := [
+	"....OOOOOOOO....",
+	"...OKKKKKKKKO...",
+	"..OKkKKKKKkKKO..",
+	"..OGGGGGGGGGGO..",
+	".OKKSSSSSSSSKKO.",
+	".OKKSSSSSSSSKKO.",
+	".OKKSESSSSESKKO.",
+	".OKKSESSSSESKKO.",
+	".OKKSCSSSSCSKKO.",
+	".OKKSSSmmSSSKKO.",
+	".OKKKSSSSSSKKKO.",
+	".OKKKOssssOKKKO.",
+	"..OKOOGGGGOOKO..",
+	"...ORRRRRRRRO...",
+	"..ORRrRRRRrRRO..",
+	".OSRRRRrRRRRRSO.",
+	".OGYYRRRrRRYYGO.",
+	"..OYYYYYYYYYYO..",
+	"..OYYYYYYYYYYO..",
+	"..OyYfYfYfYfyO..",
+	"..OYYYYYYYYYYO..",
+	"..OfffffffffffO.",
+	"....OSSO.OSSO...",
+	"...OTTTO.OTTTO..",
+	"...OOOO...OOOO..",
+]
+const INA_PAL := {
+	"O": Color8(27, 22, 48), "K": Color8(30, 22, 30), "k": Color8(80, 60, 80), "G": Color8(236, 188, 76),
+	"S": Color8(168, 112, 74), "s": Color8(134, 86, 56), "E": Color8(22, 18, 34), "C": Color8(200, 100, 90),
+	"m": Color8(120, 70, 56), "R": Color8(176, 64, 50), "r": Color8(130, 44, 40), "Y": Color8(230, 214, 176),
+	"y": Color8(190, 172, 140), "f": Color8(200, 150, 70), "T": Color8(120, 84, 50),
+}
+
+const HWI := [
+	".....OOOOOO.....",
+	"....OKKKKKKO....",
+	"....OKKKKKKO....",
+	"...OOOOOOOOOO...",
+	"..OKKKKKKKKKKO..",
+	"..OKSSSSSSSSKO..",
+	"..OSSESSSSESSO..",
+	"..OSSESSSSESSO..",
+	"..OSSSSSSSSSSO..",
+	"..OSSSSmmSSSSO..",
+	"...OSSSSSSSSO...",
+	"....OssssssO....",
+	"...OBBWWWWBBO...",
+	"..OBBBBWWBBBBO..",
+	".OBBBBBWWBBBBBO.",
+	"OBBBBBBWWBBBBBBO",
+	"OSbBBBBWWBBBBbSO",
+	".ObBBBBBBBBBBbO.",
+	"..OBBBBBBBBBBO..",
+	"..OBBBBBBBBBBO..",
+	"..ObbbbbbbbbbO..",
+	"..OBBBBBBBBBBO..",
+	"...OKKKO.OKKKO..",
+	"...OOOO...OOOO..",
+]
+const HWI_PAL := {
+	"O": Color8(27, 22, 48), "K": Color8(26, 24, 34), "S": Color8(232, 196, 156), "s": Color8(200, 160, 122),
+	"E": Color8(27, 22, 48), "m": Color8(170, 110, 96), "B": Color8(46, 70, 130), "b": Color8(32, 50, 96),
+	"W": Color8(236, 232, 220),
+}
+
+const BORI := [
+	"......OOOO......",
+	"....OOYYYYOO....",
+	"..OOYYYYYYYYOO..",
+	"OOYYyYYYYYYyYYOO",
+	"OOOOOOOOOOOOOOOO",
+	"..OKKKKKKKKKKO..",
+	"..OKSSSSSSSSKO..",
+	"..OSSESSSSESSO..",
+	"..OSSESSSSESSO..",
+	"..OSCSSSSSSCSO..",
+	"..OSSSSmmSSSSO..",
+	"...OSSSSSSSSOK..",
+	"....OssssssOKO..",
+	"...OWWWRRWWWOK..",
+	"..OWWWWRRWWWWO..",
+	".OSWWWWWWWWWWSO.",
+	".OSWwWWWWWWwWSO.",
+	"..OPPPPPPPPPPO..",
+	"..OPPPPPPPPPPO..",
+	"..OPpPPPPPPpPO..",
+	"..OPPPPPPPPPPO..",
+	"..OppppppppppO..",
+	"...OWWO..OWWO...",
+	"...OTTTO.OTTTO..",
+	"...OOOO...OOOO..",
+]
+const BORI_PAL := {
+	"O": Color8(27, 22, 48), "Y": Color8(226, 196, 110), "y": Color8(180, 150, 80), "K": Color8(40, 30, 30),
+	"S": Color8(232, 186, 146), "s": Color8(198, 150, 112), "E": Color8(27, 22, 48), "C": Color8(236, 130, 120),
+	"m": Color8(180, 100, 90), "W": Color8(238, 232, 214), "w": Color8(200, 194, 176), "R": Color8(190, 60, 70),
+	"P": Color8(120, 90, 70), "p": Color8(90, 66, 52), "T": Color8(180, 150, 90),
+}
+
+## 등장인물 id -> 그림
+static func rows(id: String) -> Array:
+	match id:
+		"keti": return KETI
+		"dolsoe": return DOLSOE
+		"teo": return TEO
+		"ina": return INA
+		"hwi": return HWI
+		"bori": return BORI
+	return HERO
+
+
+static func pal(id: String) -> Dictionary:
+	match id:
+		"keti": return KETI_PAL
+		"dolsoe": return DOLSOE_PAL
+		"teo": return TEO_PAL
+		"ina": return INA_PAL
+		"hwi": return HWI_PAL
+		"bori": return BORI_PAL
+	return HERO_PAL
+
 
 ## 발밑 가운데 기준으로 그립니다.
 static func draw(ci: CanvasItem, rows: Array, pal: Dictionary, feet: Vector2, flip := false, alpha := 1.0) -> void:
