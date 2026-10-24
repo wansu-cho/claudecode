@@ -5,6 +5,7 @@ extends Control
 
 signal journal_pressed
 
+var world: Control
 var _journal_btn: Button
 
 
@@ -39,6 +40,13 @@ func _draw() -> void:
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * Game.minutes / Game.NIGHT_LEN, 3)), Pal.CYAN)
 	var tide := bar.position.x + bar.size.x * Game.at("23:00") / Game.NIGHT_LEN
 	draw_rect(Rect2(tide, 25, 1, 7), Pal.PINK)
+	# 지금 있는 곳
+	if world:
+		var place: String = world.place_name()
+		var pw := font.get_string_size(place, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL).x + 16
+		var pr := Rect2((Pal.SCREEN.x - pw) / 2.0, 8, pw, 18)
+		draw_rect(pr, Pal.PANEL)
+		draw_string(font, pr.position + Vector2(8, 13), place, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	# 폰을 세로로 들고 있으면 안내
 	var win := DisplayServer.window_get_size()
 	if win.y > win.x:

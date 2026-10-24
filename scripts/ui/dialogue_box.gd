@@ -46,6 +46,7 @@ func _ready() -> void:
 
 func say(lines: Array) -> void:
 	visible = true
+	_panel.visible = true
 	Game.freeze()
 	for line in lines:
 		var who: String = line[0]
@@ -64,6 +65,7 @@ func say(lines: Array) -> void:
 
 func choose(options: Array) -> int:
 	visible = true
+	_panel.visible = false
 	Game.freeze()
 	_hint.visible = false
 	for c in _choices.get_children():
@@ -73,7 +75,7 @@ func choose(options: Array) -> int:
 		b.custom_minimum_size = Vector2(260, 22)
 		b.pressed.connect(func(): _picked.emit(i))
 		_choices.add_child(b)
-	_choices.position = Vector2(364, 256 - options.size() * 26)
+	_choices.position = Vector2(364, 330 - options.size() * 26)
 	var picked: int = await _picked
 	for c in _choices.get_children():
 		c.queue_free()

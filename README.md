@@ -36,7 +36,7 @@
 | `scripts/game.gd` | 시각, 몇 번째 밤, 관측 일지, 저장 |
 | `scripts/astro.gd` | 실제 별 위치 계산 (2026년 12월 20일, 북위 34°) |
 | `scripts/sky_painter.gd` | 밤하늘 그리기 |
-| `scripts/world.gd` | 섬 풍경, 걷기, 등장인물 시간표 |
+| `scripts/world.gd` | 섬 풍경과 천문대(3층 + 지하), 걷기·점프, 등장인물 시간표 |
 | `scripts/main.gd` | 게임 흐름, 대화와 증거 제시 |
 | `scripts/views/` | 망원경 화면, 푸코 진자 화면 |
 | `scripts/ui/` | 대사창, 관측 일지, 위아래 정보 띠, 안내판 |

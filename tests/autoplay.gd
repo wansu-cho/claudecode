@@ -31,8 +31,18 @@ func _run() -> void:
 	await _shot("world_start")
 
 	# 1) 진자 기록 두 번 (17:40, 18:50)
-	main.world.player_x = 1880.0
+	await _shot("roof_start")
+	# 계단으로 1층 로비 (선택지 2번째 = 1층 로비)
+	main.world.player_x = main.world.STAIRS_X
 	await _frames(2)
+	main._on_interact("stairs")
+	await _frames(3)
+	await _shot("stairs_menu")
+	_key(KEY_2)
+	await _wait(0.8)
+	_check(main.world.floor_i == 0, "계단으로 1층 이동")
+	main.world.player_x = 1290.0
+	await _frames(4)
 	await _shot("lobby")
 	game.minutes = game.at("17:40")
 	main._on_interact("pendulum")
@@ -44,7 +54,8 @@ func _run() -> void:
 
 	# 2) 망원경: 초저녁 북두칠성은 숨어 있음 → 카시오페이아로 북극성, 사진 1
 	game.minutes = game.at("18:45")
-	main.world.player_x = 1340.0
+	main.world.go_floor(2)
+	main.world.player_x = 1130.0
 	main._on_interact("telescope")
 	await _frames(3)
 	var sky: Node = main._overlay
@@ -76,7 +87,9 @@ func _run() -> void:
 
 	# 4) 케티 만나기 (전시실, 19:30)
 	game.minutes = game.at("19:30")
-	main.world.player_x = 2230.0
+	main.world.go_floor(1)
+	main.world.player_x = 1200.0
+	main.world.keti = Vector2(1200.0, 1)
 	await _frames(3)
 	await _shot("keti_hall")
 	main._on_interact("keti")
@@ -98,8 +111,9 @@ func _run() -> void:
 
 	# 6) 돌쇠: 항구에서 증거 (21:00)
 	game.minutes = game.at("21:00")
-	main.world.dolsoe_x = 330.0
-	main.world.player_x = 330.0
+	main.world.dolsoe = Vector2(260.0, 0)
+	main.world.go_floor(0)
+	main.world.player_x = 260.0
 	await _frames(3)
 	await _shot("harbor")
 	main._on_interact("dolsoe")
@@ -118,8 +132,9 @@ func _run() -> void:
 
 	# 7) 케티에게 증거 두 개 (21:30, 마당)
 	game.minutes = game.at("21:30")
-	main.world.keti_x = 1270.0
-	main.world.player_x = 1270.0
+	main.world.keti = Vector2(1250.0, 2)
+	main.world.go_floor(2)
+	main.world.player_x = 1250.0
 	await _frames(3)
 	await _shot("keti_yard")
 	main._on_interact("keti")
@@ -145,6 +160,14 @@ func _run() -> void:
 	await _shot("prototype_end")
 	_key(KEY_1)                                      # 계속 둘러보기
 	await _frames(3)
+
+	# 지하 문 (잠김) 확인
+	main.world.go_floor(0)
+	main.world.player_x = 1490.0
+	await _frames(4)
+	await _shot("b1door")
+	main._on_interact("b1door")
+	await _advance()
 
 	# 8) 해돋이 → 두 번째 밤 (일지는 남음)
 	game.minutes = game.NIGHT_LEN - 0.2

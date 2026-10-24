@@ -37,6 +37,7 @@ func _ready() -> void:
 	pad.jump.connect(func(): world.jump())
 	pad.interact.connect(func(): world.try_interact())
 	hud = HudScript.new()
+	hud.world = world
 	add_child(hud)
 	hud.journal_pressed.connect(open_journal)
 	overlay_layer = Control.new()
@@ -157,6 +158,9 @@ func _on_interact(id: String) -> void:
 	_busy = true
 	match id:
 		"bench": await _bench()
+		"stairs": await _stairs()
+		"b1door": await _b1door()
+		"tablet", "bamboo", "vase": await dialogue.say([["", Story.SLEEPING[id]]])
 		"telescope": _open(SkyScript.new())
 		"pendulum": _open(PendulumScript.new())
 		"note": await _note()
@@ -172,16 +176,42 @@ func _bench() -> void:
 	if pick == 2:
 		return
 	var mins := 60.0 if pick == 0 else 30.0
+	await _fade(func(): Game.minutes = minf(Game.minutes + mins, Game.NIGHT_LEN))
+
+
+func _stairs() -> void:
+	var floors := []
+	var names := []
+	for f in [2, 1, 0]:
+		if f != world.floor_i:
+			floors.append(f)
+			names.append(world.FLOOR_NAME[f])
+	names.append("그만두기")
+	var pick: int = await dialogue.choose(names)
+	if pick >= floors.size():
+		return
+	await _fade(func(): world.go_floor(floors[pick]))
+
+
+func _b1door() -> void:
+	await dialogue.say([
+		["", "지하로 내려가는 무거운 문이다. 손잡이 위에 별 모양 홈 일곱 개가 둥글게 파여 있다."],
+		["", "홈 %d개가 금빛으로 빛나고 있다. 문은 아직 꿈쩍도 하지 않는다." % Game.pieces()],
+	])
+
+
+## 화면을 잠깐 어둡게 했다가 밝히며, 그 사이에 할 일을 합니다.
+func _fade(between: Callable) -> void:
 	var fade := ColorRect.new()
 	fade.color = Color(0, 0, 0, 0)
 	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fade)
 	var tw := create_tween()
-	tw.tween_property(fade, "color:a", 0.85, 0.4)
+	tw.tween_property(fade, "color:a", 0.9, 0.2)
 	await tw.finished
-	Game.minutes = minf(Game.minutes + mins, Game.NIGHT_LEN)
+	between.call()
 	var tw2 := create_tween()
-	tw2.tween_property(fade, "color:a", 0.0, 0.4)
+	tw2.tween_property(fade, "color:a", 0.0, 0.2)
 	await tw2.finished
 	fade.queue_free()
 
