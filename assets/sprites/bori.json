@@ -1,10 +1,10 @@
 {
- "frame_w": 191,
- "frame_h": 191,
+ "frame_w": 190,
+ "frame_h": 192,
  "cols": 6,
  "anchor": [
-  96,
-  186
+  95,
+  187
  ],
  "body_h": 168,
  "height": 1.0,
