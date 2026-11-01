@@ -1,7 +1,12 @@
 class_name SkyPainter
-## 실제 별 위치로 북쪽 하늘을 그립니다. 바깥 풍경과 망원경 화면이 함께 씁니다.
-## 화면 좌표: x = cx + (방위 − 바라보는 방위) × k, y = 지평선 y − 고도 × k
-## 바라보는 방위: 0 = 북쪽 (기본), 180 = 남쪽 (돔 망원경)
+## 실제 별 위치로 하늘을 그립니다. 바깥 풍경과 망원경 화면이 함께 씁니다.
+##
+## 투영(하늘의 둥근 면을 화면에 펼치는 방법) 두 가지
+##   cyl: 바깥 풍경용. x = cx + (방위 − 바라보는 방위) × k, y = 지평선 y − 고도 × k
+##        아주 넓게(200° 넘게) 보여 줄 수 있지만, 높은 하늘의 별자리 모양이 일그러집니다.
+##   gno: 망원경용(심사 투영). 카메라로 찍은 것처럼 보입니다.
+##        하늘의 큰 원(두 별을 잇는 가장 짧은 길)이 화면에서 곧은 선이 되므로,
+##        '두 별을 이어 늘이기'로 북극성을 찾는 방법이 실제 하늘과 같게 됩니다.
 
 const NIGHT_TOP := Color8(5, 6, 18)
 const NIGHT_HOR := Color8(44, 28, 74)
@@ -10,14 +15,52 @@ const DAY_HOR := Color8(176, 204, 236)
 const DUSK := Color8(236, 132, 112)
 const RIDGE := Color8(14, 12, 26)
 const MOON_SKY := Color8(34, 44, 86)
+const OFF := Vector2(-9999, -9999)
 
 
-static func to_screen(aa: Vector2, cx: float, hy: float, k: float, center_az := 0.0) -> Vector2:
-	return Vector2(cx + wrapf(aa.y - center_az, -180.0, 180.0) * k, hy - aa.x * k)
+static func cyl(cx: float, hy: float, k: float, center_az := 0.0) -> Dictionary:
+	return {"type": "cyl", "cx": cx, "hy": hy, "k": k, "az": center_az}
+
+
+## 바라보는 방향(방위, 고도)이 화면의 center에 오고, f = 화면 픽셀 ÷ 라디안
+static func gno(center_az: float, center_alt: float, f: float, center: Vector2) -> Dictionary:
+	var a := deg_to_rad(center_az)
+	var h := deg_to_rad(center_alt)
+	var c := Vector3(cos(h) * sin(a), cos(h) * cos(a), sin(h))     # x 동, y 북, z 위
+	var right := Vector3(cos(a), -sin(a), 0.0)
+	var up := right.cross(c)
+	return {"type": "gno", "c": c, "right": right, "up": up, "f": f, "center": center, "az": center_az}
+
+
+## 화면 1픽셀이 몇 도인지의 역수 (도 → 픽셀, 화면 가운데 기준)
+static func px_per_deg(pr: Dictionary) -> float:
+	return pr["k"] if pr["type"] == "cyl" else pr["f"] * PI / 180.0
+
+
+## (고도, 방위) → 화면 위치. 등 뒤에 있으면 OFF
+static func project(aa: Vector2, pr: Dictionary) -> Vector2:
+	if pr["type"] == "cyl":
+		return Vector2(pr["cx"] + wrapf(aa.y - pr["az"], -180.0, 180.0) * pr["k"], pr["hy"] - aa.x * pr["k"])
+	var h := deg_to_rad(aa.x)
+	var a := deg_to_rad(aa.y)
+	var v := Vector3(cos(h) * sin(a), cos(h) * cos(a), sin(h))
+	var d: float = v.dot(pr["c"])
+	if d < 0.1:
+		return OFF
+	return pr["center"] + Vector2(v.dot(pr["right"]), -v.dot(pr["up"])) * (pr["f"] / d)
+
+
+## 지평선의 화면 높이 (화면 가운데에서)
+static func horizon_y(pr: Dictionary) -> float:
+	if pr["type"] == "cyl":
+		return pr["hy"]
+	return project(Vector2(0.0, pr["az"]), pr).y
 
 
 ## 하늘을 그리고, 보이는 이름 있는 별의 화면 위치를 돌려줍니다.
-static func draw(ci: CanvasItem, m: float, size: Vector2, hy: float, k: float, cx: float, center_az := 0.0) -> Dictionary:
+static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dictionary:
+	var hy := horizon_y(pr)
+	var k := px_per_deg(pr)
 	var dark := Astro.darkness(m)
 	var sun := Astro.sun_alt(m)
 	var dusk := clampf(1.0 - absf(sun + 5.0) / 9.0, 0.0, 1.0)
@@ -42,7 +85,7 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, hy: float, k: float, c
 			var aa := Astro.altaz(s[0], s[1], m)
 			if aa.x <= 0.0 or Astro.hidden(aa):
 				continue
-			var p := to_screen(aa, cx, hy, k, center_az)
+			var p := project(aa, pr)
 			if p.x < 0 or p.x >= size.x or p.y < 0:
 				continue
 			ci.draw_rect(Rect2(p.floor(), Vector2.ONE), Color(Pal.STAR, s[2] * dark * (1.0 - 0.7 * moon) * clampf(aa.x / 6.0, 0.2, 1.0)))
@@ -50,7 +93,7 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, hy: float, k: float, c
 			var aa := Astro.star_altaz(id, m)
 			if aa.x <= 0.0 or Astro.hidden(aa):
 				continue
-			var p := to_screen(aa, cx, hy, k, center_az)
+			var p := project(aa, pr)
 			if p.x < -4 or p.x > size.x + 4 or p.y < -4:
 				continue
 			out[id] = p
@@ -67,28 +110,32 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, hy: float, k: float, c
 			else:
 				ci.draw_rect(Rect2(p.floor(), Vector2.ONE), Color(col, 0.8 * dark))
 
-	_draw_moon(ci, m, size, hy, k, cx, center_az)
+	_draw_moon(ci, m, size, pr)
 
-	# 북북동쪽 산 능선
+	# 북북동쪽 산 능선 (바라보는 방향 앞쪽 180°만)
 	var pts := PackedVector2Array()
-	var az := -180.0
-	while az <= 180.0:
-		pts.append(Vector2(cx + az * k, hy - Astro.ridge_alt(wrapf(az + center_az, -180.0, 180.0)) * k))
+	var span := 180.0 if pr["type"] == "cyl" else 80.0
+	var az := -span
+	while az <= span:
+		var a2 := wrapf(az + pr["az"], -180.0, 180.0)
+		var p := project(Vector2(Astro.ridge_alt(a2), a2), pr)
+		if p != OFF:
+			pts.append(Vector2(clampf(p.x, -40.0, size.x + 40.0), p.y))
 		az += 2.0
-	pts.append(Vector2(cx + 180.0 * k, hy + 2))
-	pts.append(Vector2(cx - 180.0 * k, hy + 2))
+	pts.append(Vector2(pts[pts.size() - 1].x, size.y + 2))
+	pts.append(Vector2(pts[0].x, size.y + 2))
 	ci.draw_colored_polygon(pts, RIDGE.lerp(Color8(70, 90, 120), 1.0 - dark))
 	return out
 
 
 ## 보름달 (화면 안에 있을 때만). 월식 중에는 어두워지고, 개기식 동안에는 붉은 구릿빛이 됩니다.
-static func _draw_moon(ci: CanvasItem, m: float, size: Vector2, hy: float, k: float, cx: float, center_az: float) -> void:
+static func _draw_moon(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> void:
 	var aa := Astro.moon_altaz(m)
 	if aa.x <= -1.0 or Astro.hidden(aa):
 		return
-	var p := to_screen(aa, cx, hy, k, center_az)
-	var r := maxf(3.0, k * 0.6)
-	if p.x < -r or p.x > size.x + r or p.y < -r or p.y > hy:
+	var p := project(aa, pr)
+	var r := maxf(3.0, px_per_deg(pr) * 0.6)
+	if p.x < -r or p.x > size.x + r or p.y < -r or p.y > horizon_y(pr):
 		return
 	var col := moon_color(m)
 	ci.draw_circle(p, r * 2.4, Color(col, 0.12))

@@ -8,9 +8,8 @@ extends Control
 
 signal closed
 
-const K := 5.0
-const HY := 318.0
-const CX := 320.0
+## 남쪽 하늘: 남쪽 고도 30°를 향한 심사 투영 (지평선이 화면 아래 y = 318)
+var proj := SkyPainter.gno(180.0, 30.0, 274.0, Vector2(320, 160))
 const STAR_HIT := 12.0
 const PHOTO_GAP := 20.0          # 사진 사이 최소 간격 (게임 분)
 const PHOTOS_NEEDED := 3
@@ -123,7 +122,7 @@ func press(p: Vector2) -> void:
 		_status = NAMES[best] + "."
 	elif best != "":
 		_status = "밝은 별이다."
-	elif p.y > HY - 30 and absf(p.x - CX) < 80:
+	elif p.y > SkyPainter.horizon_y(proj) - 30 and absf(p.x - 320.0) < 80:
 		_status = "남쪽 수평선 근처에는 아직 아무것도 보이지 않는다." if not pos.has("canopus") else "수평선 바로 위에 붉은 별이 있다. 눌러 보자!"
 
 
@@ -184,8 +183,9 @@ func _draw() -> void:
 
 
 func _draw_south(font: Font) -> void:
-	pos = SkyPainter.draw(self, Game.minutes, Pal.SCREEN, HY, K, CX, 180.0)
-	draw_rect(Rect2(0, HY, Pal.SCREEN.x, Pal.SCREEN.y - HY), Color8(16, 12, 30))
+	pos = SkyPainter.draw(self, Game.minutes, Pal.SCREEN, proj)
+	var hy := SkyPainter.horizon_y(proj)
+	draw_rect(Rect2(0, hy, Pal.SCREEN.x, Pal.SCREEN.y - hy), Color8(16, 12, 30))
 	var line_c := Color(0.55, 0.55, 0.85, 0.35 * Astro.darkness(Game.minutes))
 	for l in Astro.ORION_LINES:
 		if pos.has(l[0]) and pos.has(l[1]):
@@ -193,9 +193,9 @@ func _draw_south(font: Font) -> void:
 	if Game.has("canopus") and pos.has("canopus"):
 		Pal.ring(self, pos["canopus"], 7, Pal.GOLD)
 		draw_string(font, pos["canopus"] + Vector2(10, -6), "노인성", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	draw_string(font, Vector2(CX - 6, HY + 13), "남", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_string(font, Vector2(CX - 45.0 * K - 12, HY + 14), "남동", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_string(font, Vector2(CX + 45.0 * K - 12, HY + 14), "남서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	for d in [[135.0, "남동"], [180.0, "남"], [225.0, "남서"]]:
+		var p := SkyPainter.project(Vector2(0.0, d[0]), proj)
+		draw_string(font, Vector2(clampf(p.x - 8, 4.0, 600.0), hy + 14), d[1], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 
 
 func _draw_moon_view(font: Font) -> void:

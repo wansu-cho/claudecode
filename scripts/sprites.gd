@@ -264,6 +264,14 @@ static func pal(id: String) -> Dictionary:
 
 
 ## 발밑 가운데 기준으로 그립니다.
+## 같은 모양을 어두운 그림자 색으로 (역광 속 사람)
+static func silhouette(pal: Dictionary) -> Dictionary:
+	var out := {}
+	for k in pal:
+		out[k] = Color8(28, 24, 40)
+	return out
+
+
 static func draw(ci: CanvasItem, rows: Array, pal: Dictionary, feet: Vector2, flip := false, alpha := 1.0) -> void:
 	var h := rows.size()
 	var w: int = rows[0].length()

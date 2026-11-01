@@ -20,11 +20,16 @@ const DomeScript := preload("res://scripts/views/dome_view.gd")
 const ShipScript := preload("res://scripts/views/ship_view.gd")
 const OrreryScript := preload("res://scripts/views/orrery_view.gd")
 const SunsetScript := preload("res://scripts/views/sunset_view.gd")
+const FactFxScript := preload("res://scripts/ui/fact_fx.gd")
+const BookScript := preload("res://scripts/views/book_view.gd")
+const BoardScript := preload("res://scripts/views/blackboard_view.gd")
+const TRUST_MAX := 3          # 사람마다 하룻밤에 틀려도 되는 횟수 (믿음 하트)
 
 var world: Control
 var hud: Control
 var pad: Control
 var dialogue: Control
+var fx: Control
 var overlay_layer: Control
 var _overlay: Control = null
 var _busy := false          # 대화나 이벤트가 진행 중
@@ -50,6 +55,9 @@ func _ready() -> void:
 	add_child(overlay_layer)
 	dialogue = DialogueScript.new()
 	add_child(dialogue)
+	fx = FactFxScript.new()
+	add_child(fx)
+	fx.landed.connect(func(): hud.flash())
 	_title()
 
 
@@ -66,9 +74,12 @@ func _title() -> void:
 
 
 func _begin_night(first_of_session: bool) -> void:
+	var first := Game.loop == 1 and Game.facts.is_empty()
+	if first:
+		await _prologue()
 	Game.start_night()
 	world.reset_night()
-	if Game.loop == 1 and Game.facts.is_empty():
+	if first:
 		Game.freeze()
 		await dialogue.say(Story.INTRO)
 		Game.add_fact("note")
@@ -87,6 +98,24 @@ func _begin_night(first_of_session: bool) -> void:
 	_ending = false
 
 
+## 프롤로그: 15:30 항구에서 시작해 마당의 선생님을 만나면 17:00 옥상으로 넘어갑니다. (시간은 멈춰 있음)
+func _prologue() -> void:
+	Game.start_night()
+	Game.minutes = Story.PROLOGUE_TIME
+	Game.freeze()
+	world.reset_night()
+	world.start_prologue()
+	var card := CardScript.new("프롤로그", Story.PROLOGUE_CARD)
+	add_child(card)
+	await card.done
+	await dialogue.say(Story.PROLOGUE_START)
+	await world.prologue_done
+	await _fade(func():
+		world.prologue = false
+		Game.start_night()
+		world.reset_night())
+
+
 ## 아직 풀지 못한 것 중 첫 번째 힌트
 func _hint() -> String:
 	for h in Story.HINTS:
@@ -99,7 +128,7 @@ func _hint() -> String:
 
 
 func _process(_delta: float) -> void:
-	var can_move := _overlay == null and not dialogue.visible and not _busy
+	var can_move: bool = _overlay == null and not dialogue.visible and not _busy and not fx.busy()
 	world.active = can_move and Game.running
 	pad.enabled = world.active
 	hud.visible = _overlay == null
@@ -160,6 +189,14 @@ func _on_interact(id: String) -> void:
 	if _busy:
 		return
 	_busy = true
+	if world.prologue:
+		if id == "teacher":
+			await dialogue.say(Story.PROLOGUE_TEACHER)
+			world.prologue_done.emit()
+		else:
+			await dialogue.say(Story.PROLOGUE_BLOCK)
+		_busy = false
+		return
 	match id:
 		"bench": await _bench()
 		"stairs": await _stairs()
@@ -167,6 +204,9 @@ func _on_interact(id: String) -> void:
 		"tablet", "bamboo", "vase", "calendar", "nut", "starmap": await _artifact(id)
 		"telescope": _open(SkyScript.new())
 		"sunset": _open(SunsetScript.new())
+		"books": _open(BookScript.new())
+		"blackboard": _open(BoardScript.new())
+		"kids": await _kids()
 		"dome": _open(DomeScript.new())
 		"binoculars": _open(ShipScript.new())
 		"orrery": _open(OrreryScript.new())
@@ -174,7 +214,9 @@ func _on_interact(id: String) -> void:
 		"note": await _note()
 		_:
 			if Story.NPC.has(id):
+				Game.freeze()                    # 사람과 이야기하는 동안에는 시간이 멈춤
 				await _talk(id)
+				Game.unfreeze()
 	_busy = false
 
 
@@ -198,6 +240,13 @@ func _stairs() -> void:
 	if pick >= floors.size():
 		return
 	await _fade(func(): world.go_floor(floors[pick]))
+
+
+## 강의실에서 잠든 친구들 (말 걸 때마다 다른 모습)
+func _kids() -> void:
+	var i: int = Game.night.get("kids_i", 0)
+	Game.night["kids_i"] = i + 1
+	await dialogue.say([["", Story.KIDS[i % Story.KIDS.size()]]])
 
 
 func _b1door() -> void:
@@ -266,7 +315,11 @@ func _talk(id: String) -> void:
 	if state == "late":
 		await dialogue.say(info["late"])
 		return
-	var options := ["증거를 보여 준다", "그냥 둔다"]
+	var trust := _trust(id)
+	if trust <= 0:
+		await dialogue.say(info["tired"])
+		return
+	var options := ["증거를 보여 준다  %s" % _hearts(trust), "그냥 둔다"]
 	if info.get("hints", false):
 		options.insert(1, "힌트를 듣는다")
 	var pick: int = await dialogue.choose(options)
@@ -274,7 +327,7 @@ func _talk(id: String) -> void:
 		var hint := _hint()
 		await dialogue.say([[info["name"], hint if hint != "" else "이제 내가 알려 줄 건 없어. 정말 대단해!"]])
 		return
-	if options[pick] != "증거를 보여 준다":
+	if pick != 0:
 		return
 	var ids: Array = await pick_evidence()
 	if ids.is_empty():
@@ -298,8 +351,24 @@ func _talk(id: String) -> void:
 			await dialogue.say(info["mixed"])
 		else:
 			await dialogue.say(info["wrong"])
-		return
-	await dialogue.say(info["partial"][ids[0]])
+	else:
+		await dialogue.say(info["partial"][ids[0]])
+	# 틀리면 믿음 하트가 하나 줄어듭니다. 다 잃으면 그날 밤에는 더 듣지 않습니다.
+	trust -= 1
+	Game.night["trust_" + id] = trust
+	if trust > 0:
+		await dialogue.say([["", "%s의 믿음 %s" % [info["name"], _hearts(trust)]]])
+	else:
+		await dialogue.say(info["tired"])
+		await dialogue.say([["", "%s의 믿음을 모두 잃었다. 오늘 밤에는 더 이상 증거를 들어 주지 않는다." % info["name"]]])
+
+
+func _trust(id: String) -> int:
+	return int(Game.night.get("trust_" + id, TRUST_MAX))
+
+
+func _hearts(n: int) -> String:
+	return "♥".repeat(n) + "♡".repeat(TRUST_MAX - n)
 
 
 func _check_prototype_end() -> void:

@@ -5,10 +5,9 @@ extends Control
 
 signal closed
 
-const K := 8.0
-const HY := 250.0
-const CX := 320.0
 const CENTER_AZ := 238.0
+## 서남서쪽 고도 5°를 향한 심사 투영 (1°가 약 8픽셀, 지평선 y = 250)
+var proj := SkyPainter.gno(CENTER_AZ, 5.0, 458.0, Vector2(320, 210))
 const MARK_EVERY := 2.0          # 게임 분
 const MARKS_NEEDED := 4          # 해가 지기 전부터 약 6분 이상 지켜보기
 const SUN_SET_ALT := -0.3        # 해의 윗부분까지 수평선 아래로
@@ -72,26 +71,27 @@ func _sun(m: float) -> Vector2:
 func _draw() -> void:
 	var font := get_theme_default_font()
 	var m := Game.minutes
-	SkyPainter.draw(self, m, Pal.SCREEN, HY, K, CX, CENTER_AZ)
+	SkyPainter.draw(self, m, Pal.SCREEN, proj)
+	var hy := SkyPainter.horizon_y(proj)
 	var sun := _sun(m)
-	var sp := SkyPainter.to_screen(sun, CX, HY, K, CENTER_AZ)
+	var sp := SkyPainter.project(sun, proj)
 	if sun.x > SUN_SET_ALT - 1.0:
 		draw_circle(sp, 26, Color(1.0, 0.6, 0.3, 0.18))
 		draw_circle(sp, 6, Color8(255, 196, 120))
 	# 해가 지나온 길
 	for i in _marks.size():
-		var p := SkyPainter.to_screen(_marks[i]["aa"], CX, HY, K, CENTER_AZ)
+		var p := SkyPainter.project(_marks[i]["aa"], proj)
 		draw_rect(Rect2(p - Vector2(1, 1), Vector2(3, 3)), Pal.GOLD)
 		if i > 0:
-			Pal.dotted(self, SkyPainter.to_screen(_marks[i - 1]["aa"], CX, HY, K, CENTER_AZ), p, Color(Pal.GOLD, 0.6), 2)
+			Pal.dotted(self, SkyPainter.project(_marks[i - 1]["aa"], proj), p, Color(Pal.GOLD, 0.6), 2)
 	# 서쪽 바다
 	var dark := Astro.darkness(m)
-	draw_rect(Rect2(0, HY, Pal.SCREEN.x, Pal.SCREEN.y - HY), Color8(40, 50, 90).lerp(Color8(12, 16, 36), dark))
-	draw_rect(Rect2(sp.x - 18, HY + 2, 36, 2), Color(1.0, 0.7, 0.4, 0.5 * (1.0 - dark)))
-	draw_line(Vector2(0, HY), Vector2(Pal.SCREEN.x, HY), Color(1, 0.8, 0.7, 0.3), 1)
+	draw_rect(Rect2(0, hy, Pal.SCREEN.x, Pal.SCREEN.y - hy), Color8(40, 50, 90).lerp(Color8(12, 16, 36), dark))
+	draw_rect(Rect2(sp.x - 18, hy + 2, 36, 2), Color(1.0, 0.7, 0.4, 0.5 * (1.0 - dark)))
+	draw_line(Vector2(0, hy), Vector2(Pal.SCREEN.x, hy), Color(1, 0.8, 0.7, 0.3), 1)
 	for d in [[225.0, "남서"], [270.0, "서"]]:
-		var x: float = CX + (d[0] - CENTER_AZ) * K
-		draw_string(font, Vector2(x - 8, HY + 16), d[1], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+		var x: float = SkyPainter.project(Vector2(0.0, d[0]), proj).x
+		draw_string(font, Vector2(x - 8, hy + 16), d[1], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 	draw_rect(Rect2(0, 0, Pal.SCREEN.x, 22), Color(0, 0, 0, 0.6))
 	draw_string(font, Vector2(10, 15), "옥상 서쪽 난간 · 해넘이 · %s" % Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	var r := Rect2(10, 290, 540, 52)

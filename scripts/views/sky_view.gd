@@ -1,19 +1,23 @@
 extends Control
 ## 망원경으로 본 북쪽 하늘입니다. (실제 별 위치, 시간이 흐르면 별이 돕니다)
+## 심사 투영으로 그려서 별자리 모양과 '두 별을 이어 늘인 선'이 실제 하늘과 같습니다.
 ##
 ## 할 수 있는 일
 ##   1) 북극성 찾기
 ##      - 북두칠성: 국자 끝 두 별(메라크 → 두베)을 누르면 길잡이 선이 5배로 늘어남
 ##      - 카시오페이아자리: W의 바깥 두 변을 누르면 만나는 점이 생기고, 가운데 별을 누르면 5배 선
 ##      - 길잡이 선 끝 근처의 북극성을 누르면 성공
-##   2) 사진 찍기: 1시간 이상 간격으로 두 장을 찍으면 별이 도는 것을 비교할 수 있음
+##      실제 하늘에서 국자 끝 두 별 사이를 약 5.3배, W자 쪽은 약 5.0배 가면 북극성입니다. (어긋남 2° 이내)
+##      게임에서는 길잡이 선이 북극성에서 끝나도록, 눈금 다섯 칸을 북극성까지 고르게 나눕니다.
+##   2) 1시간 장노출: 3초 동안 1시간이 흐르며 별 궤적(일주운동)이 그려짐 → '도는 하늘'
 
 signal closed
 signal message(text: String)
 
-const K := 4.3
-const HY := 325.0
-const CX := 320.0
+const F := 200.0                 # 화면 픽셀 ÷ 라디안 (가운데에서 1°가 약 3.5픽셀)
+const VIEW_ALT := 38.0           # 망원경이 북쪽 하늘 고도 38°를 향함 (북극성 34°, 카시오페이아자리는 64°까지 올라감)
+const EXPOSE_MIN := 60.0
+const EXPOSE_SEC := 3.5
 const STAR_HIT := 12.0
 const LINE_HIT := 7.0
 const GUIDE_TIME := 2.0
@@ -25,8 +29,11 @@ var cas_sides: Array = []
 var cas_navi := false
 var guide_kind := ""           # 다 그린 길잡이 선: "dip" 또는 "cas"
 var guide_t := -1.0
-var _compare_t := -1.0
-var _compare_old := {}
+var proj := SkyPainter.gno(0.0, VIEW_ALT, F, Vector2(320, 180))
+var _exp_t := -1.0             # 장노출 진행 (초), -1이면 쉬는 중
+var _exp_from := -1.0          # 장노출을 시작한 게임 시각 (궤적을 남겨 보여 줌)
+var _exp_to := -1.0
+var _exp_btn: Button
 var _status := ""
 var _status_t := 0.0
 var _t := 0.0
@@ -38,12 +45,12 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_opened_at = Time.get_ticks_msec()
 	var row := HBoxContainer.new()
-	row.position = Vector2(430, 330)
+	row.position = Vector2(410, 330)
 	row.add_theme_constant_override("separation", 8)
 	add_child(row)
-	var photo := Pal.button("사진 찍기")
-	photo.pressed.connect(take_photo)
-	row.add_child(photo)
+	_exp_btn = Pal.button("1시간 장노출")
+	_exp_btn.pressed.connect(long_exposure)
+	row.add_child(_exp_btn)
 	var back := Pal.button("나가기")
 	back.pressed.connect(close)
 	row.add_child(back)
@@ -68,7 +75,9 @@ func _refresh_positions() -> void:
 	for id in Astro.STARS:
 		var aa := Astro.star_altaz(id, Game.minutes)
 		if aa.x > 0.0 and not Astro.hidden(aa):
-			pos[id] = SkyPainter.to_screen(aa, CX, HY, K)
+			var p := SkyPainter.project(aa, proj)
+			if p != SkyPainter.OFF:
+				pos[id] = p
 
 
 func _process(delta: float) -> void:
@@ -76,10 +85,18 @@ func _process(delta: float) -> void:
 	_status_t = maxf(_status_t - delta, 0.0)
 	if guide_t >= 0.0 and guide_t < GUIDE_TIME:
 		guide_t += delta
-	if _compare_t >= 0.0:
-		_compare_t += delta
-		if _compare_t > 6.0:
-			_compare_t = -1.0
+	if _exp_t >= 0.0:
+		_exp_t += delta
+		var k := clampf(_exp_t / EXPOSE_SEC, 0.0, 1.0)
+		Game.minutes = _exp_from + (_exp_to - _exp_from) * k
+		if k >= 1.0:
+			_exp_t = -1.0
+			Game.unfreeze()
+			_exp_btn.disabled = false
+			if Game.add_fact("star_trail"):
+				say("1시간 동안 별들이 북극성 둘레로 원을 그리며 약 15도씩 돌았다. 북극성은 거의 점으로 찍혔다! (관측 일지에 기록)")
+			else:
+				say("별들이 북극성을 가운데 두고 둥글게 돌았다.")
 	_refresh_positions()
 	queue_redraw()
 
@@ -98,13 +115,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			get_viewport().set_input_as_handled()
 			close()
-		elif event.keycode == KEY_P:
+		elif event.keycode == KEY_L:
 			get_viewport().set_input_as_handled()
-			take_photo()
+			long_exposure()
 
 
 func press(p: Vector2) -> void:
-	if guide_t >= 0.0 and guide_t < GUIDE_TIME:
+	if _exp_t >= 0.0 or (guide_t >= 0.0 and guide_t < GUIDE_TIME):
 		return
 	var star := _star_at(p)
 	if star == "polaris":
@@ -191,36 +208,30 @@ func _meet() -> Vector2:
 	return hit if hit != null else b
 
 
-# ---- 사진 ----
+# ---- 장노출 ----
 
-func take_photo() -> void:
-	var shot := {"m": Game.minutes, "pos": {}}
-	for id in ["polaris", "kochab", "dubhe", "merak", "alkaid", "caph", "schedar", "navi", "segin", "capella", "deneb", "vega", "mirfak"]:
-		var aa := Astro.star_altaz(id, Game.minutes)
-		shot["pos"][id] = SkyPainter.to_screen(aa, CX, HY, K)
-	var photos: Array = Game.night["photos"]
-	var older := {}
-	for ph in photos:
-		if Game.minutes - float(ph["m"]) >= 60.0:
-			older = ph
-			break
-	photos.append(shot)
-	if older.is_empty():
-		if photos.size() == 1:
-			say("찰칵! %s의 북쪽 하늘을 찍었다. 시간이 지난 뒤 다시 찍어 비교해 보자." % Game.clock())
-		else:
-			say("찰칵! 그런데 앞 사진과 시간 차이가 너무 작다. 1시간쯤 지나서 찍어 보자.")
+## 카메라 셔터를 1시간 열어 둡니다. 3.5초 동안 시간이 1시간 흐르며 별 궤적이 그려집니다.
+func long_exposure() -> void:
+	if _exp_t >= 0.0:
 		return
-	_compare_old = older
-	_compare_t = 0.0
-	var hours := (Game.minutes - float(older["m"])) / 60.0
-	if Game.add_fact("star_trail"):
-		say("두 사진 비교: %.1f시간 동안 별들이 북극성 근처를 중심으로 약 %d도 돌았다! (관측 일지에 기록)" % [hours, roundi(hours * 15.0)])
-	else:
-		say("두 사진 비교: %.1f시간 동안 약 %d도 돌았다." % [hours, roundi(hours * 15.0)])
+	if Astro.darkness(Game.minutes) < 0.6:
+		say("하늘이 아직 밝아서 별이 잘 찍히지 않는다. 더 어두워지면 해 보자.")
+		return
+	if Game.minutes > Game.NIGHT_LEN - EXPOSE_MIN - 1.0:
+		say("해가 뜨기 전에 1시간을 찍을 시간이 없다.")
+		return
+	_exp_from = Game.minutes
+	_exp_to = Game.minutes + EXPOSE_MIN
+	_exp_t = 0.0
+	_exp_btn.disabled = true
+	Game.freeze()                 # 장노출 동안은 이 화면이 시간을 직접 흐르게 합니다
+	say("셔터를 열었다. 1시간 동안 하늘을 찍는다…")
 
 
 func close() -> void:
+	if _exp_t >= 0.0:
+		Game.minutes = _exp_to
+		Game.unfreeze()
 	closed.emit()
 	queue_free()
 
@@ -228,7 +239,9 @@ func close() -> void:
 # ---- 그리기 ----
 
 func _draw() -> void:
-	SkyPainter.draw(self, Game.minutes, Pal.SCREEN, HY, K, CX)
+	SkyPainter.draw(self, Game.minutes, Pal.SCREEN, proj)
+	if _exp_from >= 0.0:
+		_draw_trails()
 	var dark := Astro.darkness(Game.minutes)
 	var line_c := Color(0.55, 0.55, 0.85, 0.35 * dark)
 	for l in Astro.BIG_DIPPER_LINES + Astro.CASSIOPEIA_LINES:
@@ -259,22 +272,22 @@ func _draw() -> void:
 	if Game.night.get("polaris_seen", false) and pos.has("polaris"):
 		Pal.ring(self, pos["polaris"], 7, Pal.GOLD)
 		draw_string(get_theme_default_font(), pos["polaris"] + Vector2(10, -6), "북극성", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	if _compare_t >= 0.0:
-		_draw_compare()
 	# 망원경 테두리 느낌
 	draw_rect(Rect2(0, 0, Pal.SCREEN.x, 22), Color(0, 0, 0, 0.6))
 	draw_string(get_theme_default_font(), Vector2(10, 15), "망원경 · 북쪽 하늘 · %s" % Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	if _status_t > 0.0:
-		var r := Rect2(10, 302, 410, 46)
+		var r := Rect2(10, 302, 392, 46)
 		draw_rect(r, Pal.PANEL)
 		draw_rect(r, Pal.LINE, false, 1.0)
 		var lbl_font := get_theme_default_font()
 		draw_multiline_string(lbl_font, r.position + Vector2(6, 14), _status, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, Pal.SMALL, 3, Pal.TEXT)
 
 
+## 길잡이 선: 두 점(a → b)을 이은 선을 b에서 북극성까지 늘이고, 다섯 칸으로 나눕니다.
 func _draw_guide(a: Vector2, b: Vector2, progress: float) -> void:
 	draw_line(a, b, Pal.GOLD, 1)
-	var step := b - a
+	var target: Vector2 = pos.get("polaris", b + (b - a) * 5.0)
+	var step := (target - b) / 5.0
 	Pal.dotted(self, b, b + step * 5.0 * progress, Pal.CYAN, 3)
 	var font := get_theme_default_font()
 	for k in range(1, 6):
@@ -285,12 +298,28 @@ func _draw_guide(a: Vector2, b: Vector2, progress: float) -> void:
 		draw_string(font, p + Vector2(4, -3), str(k), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 
 
-func _draw_compare() -> void:
-	var a := clampf(_compare_t / 0.5, 0.0, 1.0) * clampf((6.0 - _compare_t) / 1.0, 0.0, 1.0)
-	var old: Dictionary = _compare_old["pos"]
-	for id in old:
-		var p0: Vector2 = old[id]
-		var p1 := SkyPainter.to_screen(Astro.star_altaz(id, Game.minutes), CX, HY, K)
-		Pal.ring(self, p0, 3, Color(Pal.PINK, a))
-		Pal.dotted(self, p0, p1, Color(Pal.PINK, a * 0.8), 2)
-	draw_string(get_theme_default_font(), Vector2(10, 40), "분홍 = %s에 찍은 사진의 별 위치" % Game.clock(float(_compare_old["m"])), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(Pal.PINK, a))
+## 장노출 궤적: 장노출을 시작한 때부터 지금(또는 끝난 때)까지 별이 지나간 길
+func _draw_trails() -> void:
+	var to := minf(Game.minutes, _exp_to)
+	var steps := 24
+	var dark := Astro.darkness(Game.minutes)
+	var stars := []
+	for id in Astro.STARS:
+		var rd: Vector2 = Astro.star_radec(id)
+		stars.append([rd.x, rd.y, 0.9])
+	for f in Astro.field():
+		if f[2] > 0.45:
+			stars.append(f)
+	for st in stars:
+		var pts := PackedVector2Array()
+		for i in steps + 1:
+			var t: float = _exp_from + (to - _exp_from) * i / steps
+			var aa := Astro.altaz(st[0], st[1], t)
+			if aa.x <= 0.0 or Astro.hidden(aa):
+				break
+			var p := SkyPainter.project(aa, proj)
+			if p == SkyPainter.OFF:
+				break
+			pts.append(p)
+		if pts.size() >= 2:
+			draw_polyline(pts, Color(0.85, 0.9, 1.0, 0.55 * st[2] * dark), 1.0)

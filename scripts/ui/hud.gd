@@ -11,12 +11,23 @@ var world: Control
 var _journal_btn: Button
 
 
+## 관측 일지에 새 기록이 들어오면 버튼이 반짝입니다.
+func flash() -> void:
+	var tw := create_tween()
+	_journal_btn.modulate = Color(2.0, 1.8, 0.8)
+	_journal_btn.scale = Vector2(1.15, 1.15)
+	tw.set_parallel()
+	tw.tween_property(_journal_btn, "modulate", Color.WHITE, 0.5)
+	tw.tween_property(_journal_btn, "scale", Vector2.ONE, 0.3)
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_journal_btn = Pal.button("관측 일지")
 	_journal_btn.position = Vector2(524, 6)
 	_journal_btn.custom_minimum_size = Vector2(110, 24)
+	_journal_btn.pivot_offset = Vector2(55, 12)
 	_journal_btn.pressed.connect(func(): journal_pressed.emit())
 	add_child(_journal_btn)
 
@@ -38,7 +49,7 @@ func _draw() -> void:
 	# 밤 진행 막대 (17:00 → 07:30), 분홍 점: 21:30 물때 (돌쇠가 떠날 수 있는 마지막 시각)
 	var bar := Rect2(12, 27, 188, 3)
 	draw_rect(bar, Color(0.25, 0.22, 0.4))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * Game.minutes / Game.NIGHT_LEN, 3)), Pal.CYAN)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(Game.minutes / Game.NIGHT_LEN, 0.0, 1.0), 3)), Pal.CYAN)
 	var tide := bar.position.x + bar.size.x * Game.at(WorldScript.TIDE_END) / Game.NIGHT_LEN
 	draw_rect(Rect2(tide, 25, 1, 7), Pal.PINK)
 	# 지금 있는 곳

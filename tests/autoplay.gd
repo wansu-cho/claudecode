@@ -26,8 +26,24 @@ func _run() -> void:
 	await _shot("title")
 	_key(KEY_ENTER)
 	await _frames(3)
-	await _advance()
+	# 프롤로그: 15:30 항구 → 마당의 선생님 → 17:00 옥상
 	w = main.world
+	_check(w.prologue, "프롤로그 시작")
+	await _shot("prologue_card")
+	_key(KEY_ENTER)
+	await _frames(3)
+	await _advance()
+	main._on_interact("binoculars")
+	await _advance()
+	_check(not game.has("ship_horizon"), "프롤로그에서는 선생님만 만날 수 있음")
+	w.player_x = w.TEACHER_X - 20.0
+	await _frames(3)
+	await _shot("prologue_teacher")
+	main._on_interact("teacher")
+	await _advance()
+	await _wait(0.8)
+	await _advance()
+	_check(not w.prologue and w.floor_i == 2, "프롤로그 뒤 옥상에서 밤 시작")
 	_check(game.has("note"), "쪽지 사실")
 	await _shot("roof_start")
 
@@ -41,6 +57,10 @@ func _run() -> void:
 	game.minutes = game.at("17:22")
 	await _frames(3)
 	_check(game.has("sunset"), "서쪽으로 지는 해")
+	await _frames(3)
+	await _shot("insight_popup")
+	_check(main.fx.busy(), "깨달음 카드")
+	await _clear_fx()
 	main._overlay.close()
 
 	# 계단: 옥상 → 1층
@@ -85,7 +105,8 @@ func _run() -> void:
 	await _wait(2.3)
 	sky.press(sky.pos["polaris"])
 	_check(game.has("polaris_cas"), "카시오페이아로 북극성")
-	sky.take_photo()
+	await _shot("polaris_cas")
+	await _clear_fx()
 	sky.close()
 
 	# 4) 진자 두 번째 (18:55)
@@ -96,13 +117,36 @@ func _run() -> void:
 	_check(game.has("pendulum"), "진자 사실")
 	main._overlay.close()
 
-	# 5) 사진 두 번째 (20:00)
-	game.minutes = game.at("20:00")
+	# 5) 1시간 장노출 (19:10 → 20:10)
+	game.minutes = game.at("19:10")
 	w.go_floor(2)
 	await _open("telescope")
-	main._overlay.take_photo()
-	_check(game.has("star_trail"), "도는 하늘")
+	main._overlay.long_exposure()
+	await _wait(3.9)
+	await _shot("long_exposure")
+	_check(game.has("star_trail"), "도는 하늘 (장노출)")
+	_check(absf(game.minutes - game.at("20:10")) < 1.0, "장노출로 1시간이 흐름")
+	await _clear_fx()
 	main._overlay.close()
+
+	# 5-1) 책방 교재, 강의실 칠판과 잠든 친구들
+	w.go_floor(0)
+	w.player_x = 1680.0
+	await _frames(3)
+	await _open("books")
+	main._overlay.open_page(6)
+	await _frames(2)
+	await _shot("book")
+	main._overlay.close()
+	w.go_floor(1)
+	w.player_x = 1610.0
+	await _frames(3)
+	await _shot("lecture_room")
+	await _open("blackboard")
+	await _shot("blackboard")
+	main._overlay.close()
+	main._on_interact("kids")
+	await _advance()
 
 	# 7) 부두 쌍안경: 연락선 (20:35)
 	game.minutes = game.at("20:35")
@@ -216,8 +260,19 @@ func _run() -> void:
 	quit(0)
 
 
+## 깨달음 카드가 떠 있으면 닫습니다.
+func _clear_fx() -> void:
+	for i in 10:
+		if not main.fx.busy():
+			return
+		await _wait(0.4)
+		main.fx.dismiss()
+		await _wait(0.6)
+
+
 ## 말 걸기 → (처음이면 이야기) → 증거 보여 주기 → 고른 증거 제출
 func _persuade(id: String, evidence: Array, shot: String) -> void:
+	await _clear_fx()
 	w.go_floor(int(w.npc[id].y))
 	w.player_x = w.npc[id].x
 	await _frames(2)
@@ -254,6 +309,7 @@ func _mid(a: Vector2, b: Vector2) -> Vector2:
 
 ## 대사창이 닫힐 때까지 Enter를 누릅니다. (선택지가 나오면 멈춤)
 func _advance() -> void:
+	await _clear_fx()
 	for i in 60:
 		await _frames(2)
 		var d: Node = main.dialogue
