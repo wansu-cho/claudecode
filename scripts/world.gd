@@ -32,7 +32,7 @@ const NPC_SPEED := 55.0
 const REACH := 24.0
 const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새 그림(시트)은 이 키로 그림
 const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
-const HD := {"keti": "keti", "teo": "teo"}   # 새 그림이 있는 사람 -> 시트 이름
+const HD := {"keti": "keti", "teo": "teo", "ina": "ina"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
 	{"id": "binoculars", "floor": 0, "x": 40.0, "label": "부두 쌍안경으로 바다 보기"},
@@ -620,6 +620,8 @@ func _draw_hd_npc(id: String, feet: Vector2, flip: bool) -> void:
 		sp.draw(self, "wake", int(seen / 0.6), feet, flip, CHAR_H)
 	elif _npc_moving.get(id, false):
 		sp.draw(self, "walk", sp.frame_at("walk", _t), feet, flip, CHAR_H)
+	elif id == "ina" and Game.minutes >= Game.at("19:30") and Game.minutes < Game.at("21:00"):
+		sp.draw(self, "gaze", 0, feet, false, CHAR_H)       # 떠나는 연락선을 손차양하고 바라봄
 	else:
 		sp.draw(self, "idle", sp.frame_at("idle", _t), feet, flip, CHAR_H)
 

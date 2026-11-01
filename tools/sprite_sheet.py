@@ -39,6 +39,11 @@ SHEETS = {
                  [["face", 5, 0, False]]],
         "height": 1.15,
     },
+    "ina": {
+        "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True], ["gaze", 1, 0, True]],
+                 [["face", 5, 0, False]]],
+        "height": 1.0,
+    },
 }
 
 
