@@ -30,6 +30,9 @@ const JUMP_V := 235.0             # 점프 처음 속도 (픽셀/초)
 const GRAVITY := 780.0
 const NPC_SPEED := 55.0
 const REACH := 24.0
+const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새 그림(시트)은 이 키로 그림
+const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
+const HD := {"keti": "keti"}      # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
 	{"id": "binoculars", "floor": 0, "x": 40.0, "label": "부두 쌍안경으로 바다 보기"},
@@ -83,6 +86,10 @@ var nearest := ""
 var npc := {}                     # 등장인물 id -> 지금 위치 (x, 층)
 var boat_x := BOAT_X
 var cam := Vector2.ZERO
+var land_t := 9.0                 # 착지한 뒤 지난 시간 (착지 자세를 잠깐 보여 줌)
+var _npc_prev := {}               # 사람마다 지난 프레임 위치 (걷는지 알아보려고)
+var _npc_moving := {}
+var _npc_seen := {}               # 사람이 처음 보인 뒤 지난 시간 (깨어나는 동작)
 var prologue := false             # 첫 밤 전 오후: 마당의 선생님만 만날 수 있고 천문대 문은 닫혀 있음
 const TEACHER_X := 720.0
 var _t := 0.0
@@ -91,6 +98,7 @@ var _t := 0.0
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR    # 새 그림(고해상도 시트)을 부드럽게 줄여 그림
 	reset_night()
 
 
@@ -199,10 +207,17 @@ func _process(delta: float) -> void:
 			y_off = 0.0
 			vy = 0.0
 			jumps = 0
+			land_t = 0.0
+	land_t += delta
 
 	for id in NPC_PLAN:
 		if npc_visible(id):
 			npc[id] = _walk_npc(npc[id], npc_target(id), delta)
+			_npc_moving[id] = _npc_prev.get(id, npc[id]) != npc[id]
+			_npc_prev[id] = npc[id]
+			_npc_seen[id] = _npc_seen.get(id, 0.0) + delta
+		else:
+			_npc_seen.erase(id)
 	if Game.night.get("sailing", false):
 		boat_x += 28.0 * delta
 
@@ -344,7 +359,7 @@ func _draw_harbor() -> void:
 			draw_rect(Rect2(bx - 2, by - 62, 3, 52), Color8(80, 56, 40))
 			draw_colored_polygon(PackedVector2Array([Vector2(bx + 2, by - 60), Vector2(bx + 34, by - 20), Vector2(bx + 2, by - 18)]), Color8(220, 210, 186))
 			if Game.night.get("sailing", false):
-				Sprites.draw(self, Sprites.DOLSOE, Sprites.DOLSOE_PAL, Vector2(bx - 16, by - 12))
+				Sprites.draw(self, Sprites.DOLSOE, Sprites.DOLSOE_PAL, Vector2(bx - 16, by - 12), false, 1.0, OLD_PX)
 
 
 func _draw_land() -> void:
@@ -563,22 +578,50 @@ func _draw_people() -> void:
 		var feet := Vector2(p.x, floor_y(f) - (4 if on_pier else 0))
 		if id == "keti":
 			feet.y += sin(_t * 2.0) - 2.0
-		Sprites.draw_aura(self, Sprites.rows(id), feet, Color(0.5, 0.92, 0.97, 0.8))
-		Sprites.draw(self, Sprites.rows(id), Sprites.pal(id), feet, player_x < p.x)
+		if HD.has(id):
+			_draw_hd_npc(id, feet, player_x < p.x)
+		else:
+			Sprites.draw_aura(self, Sprites.rows(id), feet, Color(0.5, 0.92, 0.97, 0.8), OLD_PX)
+			Sprites.draw(self, Sprites.rows(id), Sprites.pal(id), feet, player_x < p.x, 1.0, OLD_PX)
 	if prologue:                                                    # 해를 등진 선생님 (얼굴이 안 보이는 실루엣)
 		var tf := Vector2(TEACHER_X, floor_y(0))
-		Sprites.draw_aura(self, Sprites.TEO, tf, Color(1.0, 0.75, 0.45, 0.9))
-		Sprites.draw(self, Sprites.TEO, Sprites.silhouette(Sprites.TEO_PAL), tf, player_x < TEACHER_X)
-	var bob := 1.0 if int(walk_t * 10.0) % 2 == 1 and y_off == 0.0 else 0.0
+		Sprites.draw_aura(self, Sprites.TEO, tf, Color(1.0, 0.75, 0.45, 0.9), OLD_PX * 1.15)
+		Sprites.draw(self, Sprites.TEO, Sprites.silhouette(Sprites.TEO_PAL), tf, player_x < TEACHER_X, 1.0, OLD_PX * 1.15)
 	var on_pier := floor_i == 0 and player_x < 420
 	var ground_y := floor_y(floor_i) - (4 if on_pier else 0)
 	if y_off < 0.0:
-		var w := 12.0 * (1.0 + y_off / 80.0)
+		var w := 16.0 * (1.0 + y_off / 80.0)
 		draw_rect(Rect2(player_x - w / 2.0, ground_y - 1, w, 2), Color(0, 0, 0, 0.35))
-	var feet := Vector2(player_x, ground_y - bob + y_off)
-	Sprites.draw(self, Sprites.HERO, Sprites.HERO_PAL, feet, facing > 0)
-	var light := feet + Vector2(8 * (1 if facing > 0 else -1), -8)
-	draw_circle(light, 8, Color(1, 0.2, 0.2, 0.18))
+	var feet := Vector2(player_x, ground_y + y_off)
+	var hero := SheetSprite.named("hero")
+	var anim := "idle"
+	var fi := hero.frame_at("idle", _t)
+	if y_off < 0.0:
+		anim = "jump"
+		fi = 1 if vy < 0.0 else 2
+	elif land_t < 0.09:
+		anim = "jump"
+		fi = 0
+	elif walk_t > 0.0:
+		anim = "walk"
+		fi = hero.frame_at("walk", walk_t)
+	hero.draw(self, anim, fi, feet, facing < 0, CHAR_H)
+	# 빨간 랜턴 불빛 (앞쪽 손 아래)
+	var light := feet + Vector2(10 * (1 if facing > 0 else -1), -9)
+	draw_circle(light, 10, Color(1, 0.25, 0.2, 0.16))
+
+
+## 새 그림이 있는 사람: 깨어날 때는 깨어나는 동작, 걸을 때는 걷기, 서 있으면 대기
+func _draw_hd_npc(id: String, feet: Vector2, flip: bool) -> void:
+	var sp := SheetSprite.named(HD[id])
+	var seen: float = _npc_seen.get(id, 99.0)
+	draw_circle(feet + Vector2(0, -CHAR_H * 0.5), CHAR_H * 0.62, Color(0.5, 0.92, 0.97, 0.10))
+	if sp.has_anim("wake") and seen < 2.4:
+		sp.draw(self, "wake", int(seen / 0.6), feet, flip, CHAR_H)
+	elif _npc_moving.get(id, false):
+		sp.draw(self, "walk", sp.frame_at("walk", _t), feet, flip, CHAR_H)
+	else:
+		sp.draw(self, "idle", sp.frame_at("idle", _t), feet, flip, CHAR_H)
 
 
 func _draw_prompt() -> void:

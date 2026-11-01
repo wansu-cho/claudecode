@@ -23,6 +23,11 @@ const SunsetScript := preload("res://scripts/views/sunset_view.gd")
 const FactFxScript := preload("res://scripts/ui/fact_fx.gd")
 const BookScript := preload("res://scripts/views/book_view.gd")
 const BoardScript := preload("res://scripts/views/blackboard_view.gd")
+## 손님 표정 칸 순서 (시트의 face 줄): 기본, 걱정, 고집, 놀람, 깨달음
+const FACE_WORRY := 1
+const FACE_STUBBORN := 2
+const FACE_SURPRISED := 3
+const FACE_WIN := 4
 const TRUST_MAX := 3          # 사람마다 하룻밤에 틀려도 되는 횟수 (믿음 하트)
 
 var world: Control
@@ -320,6 +325,7 @@ func _talk(id: String) -> void:
 		Game.night[met_key] = true
 		await dialogue.say(info["wake"])
 		if Game.met.has(id):
+			dialogue.face = FACE_SURPRISED
 			await dialogue.say(info["deja"])
 			Game.night["realize_now"] = true
 		Game.met[id] = true
@@ -356,6 +362,7 @@ func _talk(id: String) -> void:
 	var extra := ids.filter(func(f): return f not in need)
 	var missing := need.filter(func(f): return f not in ids)
 	if extra.is_empty() and missing.is_empty():
+		dialogue.face = FACE_WIN
 		await dialogue.say(info["win"])
 		if id == "dolsoe":
 			Game.night["sailing"] = true
@@ -364,6 +371,7 @@ func _talk(id: String) -> void:
 		return
 	if not extra.is_empty():
 		var react: Dictionary = info.get("react", {})
+		dialogue.face = FACE_STUBBORN
 		if react.has(extra[0]):
 			await dialogue.say(react[extra[0]])
 		elif extra.size() < ids.size():
@@ -371,6 +379,7 @@ func _talk(id: String) -> void:
 		else:
 			await dialogue.say(info["wrong"])
 	else:
+		dialogue.face = FACE_WORRY
 		await dialogue.say(info["partial"][ids[0]])
 	# 틀리면 믿음 하트가 하나 줄어듭니다. 다 잃으면 그날 밤에는 더 듣지 않습니다.
 	trust -= 1

@@ -272,10 +272,11 @@ static func silhouette(pal: Dictionary) -> Dictionary:
 	return out
 
 
-static func draw(ci: CanvasItem, rows: Array, pal: Dictionary, feet: Vector2, flip := false, alpha := 1.0) -> void:
+## px: 그림 한 칸을 몇 칸 크기로 그릴지 (새 그림과 키를 맞추려고 1.5배로 그림)
+static func draw(ci: CanvasItem, rows: Array, pal: Dictionary, feet: Vector2, flip := false, alpha := 1.0, px := 1.0) -> void:
 	var h := rows.size()
 	var w: int = rows[0].length()
-	var origin := (feet - Vector2(w / 2.0, h)).floor()
+	var origin := (feet - Vector2(w / 2.0, h) * px).floor()
 	for j in h:
 		var row: String = rows[j]
 		for i in row.length():
@@ -284,20 +285,20 @@ static func draw(ci: CanvasItem, rows: Array, pal: Dictionary, feet: Vector2, fl
 				var c: Color = pal[ch]
 				c.a *= alpha
 				var x := (w - 1 - i) if flip else i
-				ci.draw_rect(Rect2(origin + Vector2(x, j), Vector2.ONE), c)
+				ci.draw_rect(Rect2(origin + Vector2(x, j) * px, Vector2(px, px)), c)
 
 
 ## 바깥 테두리에 빛나는 선을 그립니다 (유물에서 깨어난 손님 표시)
-static func draw_aura(ci: CanvasItem, rows: Array, feet: Vector2, color: Color) -> void:
+static func draw_aura(ci: CanvasItem, rows: Array, feet: Vector2, color: Color, px := 1.0) -> void:
 	var h := rows.size()
 	var w: int = rows[0].length()
-	var origin := (feet - Vector2(w / 2.0, h)).floor()
+	var origin := (feet - Vector2(w / 2.0, h) * px).floor()
 	for j in h:
 		for i in w:
 			if _filled(rows, i, j):
 				continue
 			if _filled(rows, i - 1, j) or _filled(rows, i + 1, j) or _filled(rows, i, j - 1) or _filled(rows, i, j + 1):
-				ci.draw_rect(Rect2(origin + Vector2(i, j), Vector2.ONE), color)
+				ci.draw_rect(Rect2(origin + Vector2(i, j) * px, Vector2(px, px)), color)
 
 
 static func _filled(rows: Array, i: int, j: int) -> bool:

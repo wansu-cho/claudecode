@@ -2,6 +2,7 @@ extends Control
 ## 화면 아래 대사창입니다.
 ##   await say(lines)          대사 여러 줄을 차례로 보여 줌
 ##   await choose(["가", "나"]) 선택지를 보여 주고 고른 번호를 돌려줌
+##   새 그림이 있는 사람이 말하면 대사창 위에 얼굴 그림이 나옵니다. (face: 표정 번호)
 
 signal _next
 signal _picked(index: int)
@@ -11,6 +12,8 @@ var _name: Label
 var _text: Label
 var _hint: Label
 var _choices: VBoxContainer
+var _portrait: TextureRect
+var face := 0                     # 다음 say()에서 쓸 표정 (끝나면 0으로 돌아감)
 var _waiting := false
 var _opened_at := 0
 
@@ -38,6 +41,15 @@ func _ready() -> void:
 	_hint = Pal.label("▼ 누르거나 Enter", Pal.SMALL, Pal.DIM, HORIZONTAL_ALIGNMENT_RIGHT)
 	box.add_child(_hint)
 
+	_portrait = TextureRect.new()
+	_portrait.position = Vector2(20, 176)
+	_portrait.size = Vector2(84, 84)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_portrait)
+
 	_choices = VBoxContainer.new()
 	_choices.add_theme_constant_override("separation", 4)
 	_choices.position = Vector2(360, 150)
@@ -50,6 +62,10 @@ func say(lines: Array) -> void:
 	Game.freeze()
 	for line in lines:
 		var who: String = line[0]
+		var sheet := SheetSprite.for_speaker(who)
+		_portrait.visible = sheet != null
+		if sheet:
+			_portrait.texture = sheet.portrait(line[2] if line.size() > 2 else face)
 		_name.text = who
 		_name.visible = who != ""
 		_text.text = line[1]
@@ -60,12 +76,14 @@ func say(lines: Array) -> void:
 		await _next
 	_waiting = false
 	visible = false
+	face = 0
 	Game.unfreeze()
 
 
 func choose(options: Array) -> int:
 	visible = true
 	_panel.visible = false
+	_portrait.visible = false
 	Game.freeze()
 	_hint.visible = false
 	for c in _choices.get_children():
