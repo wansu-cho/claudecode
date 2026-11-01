@@ -1,28 +1,36 @@
 extends Control
-## 걸어 다니는 섬 풍경입니다. 바깥은 옆으로, 천문대 안은 층으로 이어집니다.
+## 걸어 다니는 섬 풍경입니다. 천문대 안은 층으로, 바깥은 옆으로 이어집니다. (게임 좌표, 플레이어 키 = 40)
 ##
-##   바깥 (1층 높이)   0 ~ 420 항구(돌쇠의 배) · 420 ~ 900 마당(벤치)
-##   천문대 900 ~ 1840 (오른쪽 1540 ~ 1840은 새 건물: 1층 책방, 2층 강의실)
-##     3층  옥상 관측 데크: 서쪽 난간(해넘이), 북쪽 하늘 망원경, 돔(남쪽 하늘과 달을 보는 큰 망원경)
-##     2층  전시실 '옛사람들의 하늘': 유물 6점 (등장인물이 깨어나는 곳) | 강의실: 칠판(오늘 밤 천문 현상), 잠든 친구들
-##     1층  로비: 푸코 진자, 지구 공전 모형, 선생님 책상, 지하로 가는 문(잠김) | 책방: 어린이천문대 교재
-##     지하 1층  (잠김) 우주 주소 조각 7개를 모으면 열림
-## 층 이동은 왼쪽 계단에서 합니다. (main.gd에서 층을 고름)
+##   천문대 40 ~ 720 (가운데 큰 홀 구조)
+##               왼쪽 40 ~ 300        가운데 홀 300 ~ 460              오른쪽 460 ~ 720
+##     3층 옥상  서쪽 난간·망원경      나선 계단 출구, 홀 위의 돔        (빈 관측 데크)
+##     2층       선생님 사무실        나선 계단, 진자 줄이 지나는 다리   강의실 (칠판, 잠든 친구들)
+##     1층       창고(실습실)         나선 계단, 푸코 진자               책방 (교재, 만화책) → 오른쪽 문으로 바깥
+##     지하      일곱 칸 문 너머 별지기의 방 (잠김, 창고에서 내려감)
+##   바깥 (1층 높이)  720 ~ 980 천문대 마당(벤치) · 980 ~ 1320 항구(돌쇠의 배, 연락선, 쌍안경)
+## 층 이동은 가운데 홀의 나선 계단에서 합니다. (main.gd에서 층을 고름)
+## 손님 6명은 어린이천문대 자료에서 깨어납니다.
+##   테오: 그리스로마신화 만화책(책방) · 이나: 교재 속 옛 세계 지도(책방) · 보리: 종이 앙부일구(창고)
+##   케티: 판서 그림(강의실) · 돌쇠: 선생님이 찍은 바다 별 사진(사무실) · 휘: 지구본(사무실)
 
 signal interact(id: String)
 signal prologue_done
 
-const WORLD_W := 1900.0
+const WORLD_W := 1320.0
 const FLOOR_Y := {0: 300.0, 1: 190.0, 2: 80.0}    # 층별 바닥 높이 (발 위치)
 const B1_Y := 388.0               # 지하 1층 바닥 (지금은 들어갈 수 없음)
 const CAM_FEET := 268.0           # 화면에서 발이 놓이는 높이 (아래로 지하가 조금 보이게)
-const FLOOR_NAME := {0: "1층 로비", 1: "2층 전시실", 2: "3층 옥상"}
-const B_X0 := 900.0               # 천문대 왼쪽 벽
-const B_X1 := 1840.0              # 천문대 오른쪽 벽
-const WING_X := 1540.0            # 이 오른쪽이 책방(1층)과 강의실(2층)
-const IN_X0 := 914.0              # 안쪽에서 걸을 수 있는 범위
-const IN_X1 := 1826.0
-const STAIRS_X := 940.0
+const FLOOR_NAME := {0: "1층", 1: "2층", 2: "3층 옥상"}
+const B_X0 := 40.0                # 천문대 왼쪽 벽
+const B_X1 := 720.0               # 천문대 오른쪽 벽 (1층에 바깥으로 나가는 문)
+const HALL_X0 := 300.0            # 가운데 홀
+const HALL_X1 := 460.0
+const IN_X0 := 54.0               # 안쪽에서 걸을 수 있는 범위
+const IN_X1 := 706.0
+const YARD_X1 := 980.0            # 이 오른쪽은 항구 (부두)
+const STAIRS_X := 330.0           # 나선 계단
+const PEND_X := 405.0             # 푸코 진자 (줄은 돔 꼭대기에서 1층까지)
+const DOME_X := 400.0
 const HOR := 262.0                # 1층 높이에서 본 수평선
 const SKY_K := 3.0
 const SPEED := 145.0
@@ -37,44 +45,48 @@ const DOOR_RING := Vector2(6.1, 36.8)
 const HD := {"keti": "keti", "teo": "teo", "ina": "ina", "dolsoe": "dolsoe", "bori": "bori", "hwi": "hwi"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
-	{"id": "binoculars", "floor": 0, "x": 40.0, "label": "부두 쌍안경으로 바다 보기"},
-	{"id": "bench", "floor": 0, "x": 640.0, "label": "벤치에 앉아 기다리기"},
-	{"id": "stairs", "floor": 0, "x": STAIRS_X, "label": "계단"},
-	{"id": "note", "floor": 0, "x": 1060.0, "label": "선생님 책상"},
-	{"id": "orrery", "floor": 0, "x": 1180.0, "label": "지구 공전 모형"},
-	{"id": "pendulum", "floor": 0, "x": 1320.0, "label": "푸코 진자 살펴보기"},
-	{"id": "b1door", "floor": 0, "x": 1490.0, "label": "지하로 내려가는 문"},
-	{"id": "books", "floor": 0, "x": 1680.0, "label": "어린이천문대 교재 읽기"},
-	{"id": "stairs", "floor": 1, "x": STAIRS_X, "label": "계단"},
-	{"id": "tablet", "floor": 1, "x": 1010.0, "label": "바빌로니아 세계 지도 (점토판)"},
-	{"id": "bamboo", "floor": 1, "x": 1090.0, "label": "옛 중국의 천문 기록 (죽간)"},
-	{"id": "nut", "floor": 1, "x": 1170.0, "label": "누트 여신 그림 (복제품)"},
-	{"id": "vase", "floor": 1, "x": 1260.0, "label": "그리스 도기"},
-	{"id": "calendar", "floor": 1, "x": 1350.0, "label": "절기 농사 달력"},
-	{"id": "starmap", "floor": 1, "x": 1450.0, "label": "천상열차분야지도 (복각본)"},
-	{"id": "blackboard", "floor": 1, "x": 1610.0, "label": "칠판 보기: 오늘 밤 하늘"},
-	{"id": "kids", "floor": 1, "x": 1760.0, "label": "잠든 친구들"},
-	{"id": "stairs", "floor": 2, "x": STAIRS_X, "label": "계단"},
-	{"id": "sunset", "floor": 2, "x": 1000.0, "label": "서쪽 하늘 바라보기 (해넘이)"},
-	{"id": "telescope", "floor": 2, "x": 1100.0, "label": "망원경으로 북쪽 하늘 보기"},
-	{"id": "dome", "floor": 2, "x": 1440.0, "label": "돔 안의 큰 망원경"},
+	# 1층: 창고 · 가운데 홀 · 책방 · 바깥
+	{"id": "orrery", "floor": 0, "x": 95.0, "label": "지구 공전 모형"},
+	{"id": "sundial", "floor": 0, "x": 175.0, "label": "만들기 실습: 종이 앙부일구"},
+	{"id": "b1door", "floor": 0, "x": 262.0, "label": "지하로 내려가는 문"},
+	{"id": "stairs", "floor": 0, "x": STAIRS_X, "label": "나선 계단"},
+	{"id": "pendulum", "floor": 0, "x": PEND_X, "label": "푸코 진자 살펴보기"},
+	{"id": "books", "floor": 0, "x": 505.0, "label": "어린이천문대 교재 읽기"},
+	{"id": "mapbook", "floor": 0, "x": 580.0, "label": "교재 펼친 쪽: 옛사람들의 세계 지도"},
+	{"id": "comic", "floor": 0, "x": 655.0, "label": "그리스로마신화 만화책"},
+	{"id": "bench", "floor": 0, "x": 830.0, "label": "벤치에 앉아 기다리기"},
+	{"id": "binoculars", "floor": 0, "x": 1296.0, "label": "부두 쌍안경으로 바다 보기"},
+	# 2층: 선생님 사무실 · 가운데 홀 · 강의실
+	{"id": "photo", "floor": 1, "x": 80.0, "label": "선생님이 찍은 사진: 별빛섬 바다의 북두칠성"},
+	{"id": "note", "floor": 1, "x": 160.0, "label": "선생님 책상"},
+	{"id": "globe", "floor": 1, "x": 245.0, "label": "지구본"},
+	{"id": "stairs", "floor": 1, "x": STAIRS_X, "label": "나선 계단"},
+	{"id": "blackboard", "floor": 1, "x": 490.0, "label": "칠판 보기: 오늘 밤 하늘"},
+	{"id": "drawing", "floor": 1, "x": 538.0, "label": "판서 그림: 이집트 사람들의 하늘"},
+	{"id": "kids", "floor": 1, "x": 632.0, "label": "잠든 친구들"},
+	# 3층 옥상
+	{"id": "sunset", "floor": 2, "x": 70.0, "label": "서쪽 하늘 바라보기 (해넘이)"},
+	{"id": "telescope", "floor": 2, "x": 180.0, "label": "망원경으로 북쪽 하늘 보기"},
+	{"id": "stairs", "floor": 2, "x": STAIRS_X, "label": "나선 계단"},
+	{"id": "dome", "floor": 2, "x": DOME_X + 10.0, "label": "돔 안의 큰 망원경"},
 ]
 
-## 등장인물: 깨어나는 유물, 깨어나는 시각, 시간표 [시각, (x, 층)]
+## 등장인물: 깨어나는 자료, 깨어나는 시각, 시간표 [시각, (x, 층)]
 const NPC_PLAN := {
-	"keti": {"home": "nut", "wake": "18:00", "plan": [["18:00", Vector2(1190, 1)], ["21:00", Vector2(1240, 2)]]},
-	"teo": {"home": "vase", "wake": "18:00", "plan": [["18:00", Vector2(1250, 0)], ["23:30", Vector2(1300, 2)]]},
-	"ina": {"home": "tablet", "wake": "18:30", "plan": [["18:30", Vector2(110, 0)]]},
-	"dolsoe": {"home": "starmap", "wake": "19:00", "plan": [["19:00", Vector2(1425, 1)], ["20:00", Vector2(260, 0)]]},
-	"bori": {"home": "calendar", "wake": "19:00", "plan": [["19:00", Vector2(1125, 0)]]},
-	"hwi": {"home": "bamboo", "wake": "20:00", "plan": [["20:00", Vector2(1370, 2)]]},
+	"keti": {"home": "drawing", "wake": "18:00", "plan": [["18:00", Vector2(505, 1)], ["21:00", Vector2(600, 2)]]},
+	"teo": {"home": "comic", "wake": "18:00", "plan": [["18:00", Vector2(440, 0)], ["23:30", Vector2(650, 2)]]},
+	"ina": {"home": "mapbook", "wake": "18:30", "plan": [["18:30", Vector2(1130, 0)]]},
+	"dolsoe": {"home": "photo", "wake": "19:00", "plan": [["19:00", Vector2(110, 1)], ["20:00", Vector2(1040, 0)]]},
+	"bori": {"home": "sundial", "wake": "19:00", "plan": [["19:00", Vector2(135, 0)]]},
+	"hwi": {"home": "globe", "wake": "20:00", "plan": [["20:00", Vector2(530, 2)]]},
 }
 ## 돌쇠가 배를 띄울 수 있는 마지막 시각 (물때). 북두칠성의 국자 끝 두 별은 21:55에야 산 위로 올라옵니다.
 const TIDE_END := "21:30"
-const BOAT_X := 160.0
-const FERRY_X := 340.0             # 섬 연락선 (19:30 출항)
+const BOAT_X := 1060.0             # 돌쇠의 배 (떠나면 오른쪽 바다로)
+const FERRY_X := 1190.0            # 섬 연락선 (19:30 출항)
+const TEACHER_X := 880.0           # 프롤로그에서 선생님이 서 있는 곳 (마당)
 
-var player_x := 1130.0
+var player_x := 200.0
 var floor_i := 2                  # 지금 있는 층 (0 = 1층/바깥, 1 = 2층, 2 = 3층 옥상)
 var facing := -1
 var walk_t := 0.0
@@ -93,7 +105,6 @@ var _npc_prev := {}               # 사람마다 지난 프레임 위치 (걷는
 var _npc_moving := {}
 var _npc_seen := {}               # 사람이 처음 보인 뒤 지난 시간 (깨어나는 동작)
 var prologue := false             # 첫 밤 전 오후: 마당의 선생님만 만날 수 있고 천문대 문은 닫혀 있음
-const TEACHER_X := 720.0
 var _t := 0.0
 
 
@@ -105,16 +116,16 @@ func _ready() -> void:
 
 
 func reset_night() -> void:
-	player_x = 1130.0
+	player_x = 200.0
 	floor_i = 2
 	y_off = 0.0
 	vy = 0.0
 	jumps = 0
 	npc.clear()
 	for id in NPC_PLAN:
-		npc[id] = Vector2(spot_x(NPC_PLAN[id]["home"]), 1)
+		npc[id] = Vector2(spot_x(NPC_PLAN[id]["home"]), spot_floor(NPC_PLAN[id]["home"]))
 	boat_x = BOAT_X
-	facing = -1
+	facing = 1
 	_snap_camera()
 
 
@@ -122,12 +133,12 @@ func reset_night() -> void:
 func start_prologue() -> void:
 	prologue = true
 	floor_i = 0
-	player_x = 300.0
-	facing = 1
+	player_x = 1150.0
+	facing = -1
 	_snap_camera()
 
 
-## 다른 층으로 옮깁니다. (계단)
+## 다른 층으로 옮깁니다. (나선 계단)
 func go_floor(f: int) -> void:
 	floor_i = f
 	player_x = STAIRS_X + 16.0
@@ -148,6 +159,13 @@ static func spot_x(id: String) -> float:
 		if sp["id"] == id:
 			return sp["x"]
 	return 0.0
+
+
+static func spot_floor(id: String) -> int:
+	for sp in SPOTS:
+		if sp["id"] == id:
+			return sp["floor"]
+	return 0
 
 
 ## "freed"(아침으로 돌아감) / "dormant"(아직 잠듦) / "awake" / 돌쇠만: "hall", "harbor", "late"
@@ -178,7 +196,7 @@ func npc_visible(id: String) -> bool:
 	return not (id == "dolsoe" and Game.night.get("sailing", false))
 
 
-## 사람을 목표 자리로 걷게 합니다. 층이 다르면 계단에서 나타납니다.
+## 사람을 목표 자리로 걷게 합니다. 층이 다르면 나선 계단에서 나타납니다.
 func _walk_npc(p: Vector2, target: Vector2, delta: float) -> Vector2:
 	if p.y != target.y:
 		return Vector2(STAIRS_X + 10.0, target.y)
@@ -196,8 +214,8 @@ func _process(delta: float) -> void:
 		if absf(dir) > 0.05:
 			facing = 1 if dir > 0 else -1
 			walk_t += delta
-			var lo := 12.0 if floor_i == 0 else IN_X0
-			var hi := B_X0 - 14.0 if prologue else IN_X1
+			var lo := B_X1 + 14.0 if prologue else IN_X0
+			var hi := WORLD_W - 12.0 if floor_i == 0 else IN_X1
 			player_x = clampf(player_x + dir * SPEED * delta, lo, hi)
 		else:
 			walk_t = 0.0
@@ -289,11 +307,19 @@ func label_of(id: String) -> String:
 
 
 func place_name() -> String:
-	if floor_i == 0 and player_x < B_X0:
-		return "항구" if player_x < 420 else "천문대 마당"
-	if player_x > WING_X and floor_i < 2:
-		return "1층 책방" if floor_i == 0 else "2층 강의실"
-	return FLOOR_NAME[floor_i]
+	if floor_i == 0 and player_x > B_X1:
+		return "천문대 마당" if player_x < YARD_X1 else "항구"
+	if floor_i == 2:
+		return FLOOR_NAME[2]
+	if player_x < HALL_X0:
+		return "1층 창고" if floor_i == 0 else "2층 선생님 사무실"
+	if player_x < HALL_X1:
+		return "%s 가운데 홀" % FLOOR_NAME[floor_i]
+	return "1층 책방" if floor_i == 0 else "2층 강의실"
+
+
+func _on_pier() -> bool:
+	return player_x > YARD_X1
 
 
 # ---- 그리기 ----
@@ -304,8 +330,8 @@ func _draw() -> void:
 	SkyPainter.draw(self, m, Pal.SCREEN, SkyPainter.cyl(Pal.SCREEN.x / 2.0, hy, SKY_K))
 	_draw_sea(m, hy)
 	draw_set_transform(-cam)
-	_draw_harbor()
 	_draw_land()
+	_draw_harbor()
 	_draw_building()
 	_draw_people()
 	draw_set_transform(Vector2.ZERO)
@@ -330,12 +356,34 @@ func _draw_sea(m: float, hy: float) -> void:
 	draw_circle(Vector2(lx, hy - 26), 6, Color(1, 0.85, 0.5, 0.15 * dark * beam + 0.05))
 
 
+## 땅 (천문대 아래부터 마당까지, 지하까지 이어지는 흙)과 마당
+func _draw_land() -> void:
+	var g: float = FLOOR_Y[0]
+	draw_rect(Rect2(0, g, YARD_X1, 200), Color8(26, 24, 44))
+	draw_rect(Rect2(0, g, YARD_X1, 1), Color8(96, 100, 164))
+	for i in 120:
+		var x := (i * 53) % int(YARD_X1)
+		var y := g + 3 + (i * 7) % 150
+		draw_rect(Rect2(x, y, 1, 1), Color(0.6, 0.65, 0.85, 0.3))
+	# 마당: 안내판, 가로등, 벤치
+	draw_rect(Rect2(748, g - 30, 2, 30), Color8(80, 70, 90))
+	draw_rect(Rect2(788, g - 30, 2, 30), Color8(80, 70, 90))
+	draw_rect(Rect2(734, g - 46, 70, 16), Color8(34, 30, 60))
+	draw_string(get_theme_default_font(), Vector2(736, g - 34), "어린이천문대", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+	for x in [770.0, 950.0]:
+		draw_rect(Rect2(x, g - 46, 2, 46), Color8(40, 40, 60))
+		draw_rect(Rect2(x - 3, g - 49, 8, 4), Color8(255, 214, 140))
+		draw_circle(Vector2(x + 1, g - 46), 16, Color(1, 0.8, 0.45, 0.10))
+	_prop("bench", Vector2(830, g))
+
+
+## 항구: 부두, 연락선, 쌍안경, 돌쇠의 배
 func _draw_harbor() -> void:
-	var g := FLOOR_Y[0]
-	draw_rect(Rect2(0, g - 4, 420, 6), Color8(92, 66, 54))
-	for x in range(0, 420, 12):
+	var g: float = FLOOR_Y[0]
+	draw_rect(Rect2(YARD_X1, g - 4, WORLD_W - YARD_X1, 6), Color8(92, 66, 54))
+	for x in range(int(YARD_X1), int(WORLD_W), 12):
 		draw_rect(Rect2(x, g - 4, 1, 6), Color8(60, 42, 38))
-	for x in range(10, 420, 60):
+	for x in range(int(YARD_X1) + 10, int(WORLD_W), 60):
 		draw_rect(Rect2(x, g + 2, 4, 40), Color8(50, 36, 34))
 	# 섬 연락선 (19:30에 떠남)
 	if Game.minutes < Game.at("19:30"):
@@ -348,9 +396,9 @@ func _draw_harbor() -> void:
 		draw_rect(Rect2(fx - 1, fy - 46, 2, 18), Color8(90, 90, 110))
 		draw_rect(Rect2(fx - 2, fy - 48, 4, 3), Color8(255, 240, 200))
 		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 52), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	_prop("binoculars", Vector2(36, g - 4))                             # 부두 쌍안경
+	_prop("binoculars", Vector2(1296, g - 4))                           # 부두 쌍안경 (부두 끝)
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
-		if boat_x < WORLD_W:
+		if boat_x < WORLD_W + 60:
 			var bob := sin(_t * 1.5) * 1.5
 			var bx := boat_x
 			var by := g + 10 + bob
@@ -362,175 +410,157 @@ func _draw_harbor() -> void:
 				SheetSprite.named("dolsoe").draw(self, "point", 0, Vector2(bx - 16, by - 12), false, CHAR_H)   # 북극성을 가리키며 떠남
 
 
-func _draw_land() -> void:
-	var g := FLOOR_Y[0]
-	# 땅 (지하까지 이어지는 흙)
-	draw_rect(Rect2(420, g, WORLD_W - 420, 200), Color8(26, 24, 44))
-	draw_rect(Rect2(420, g, WORLD_W - 420, 1), Color8(96, 100, 164))
-	for i in 160:
-		var x := 420 + (i * 53) % int(WORLD_W - 420)
-		var y := g + 3 + (i * 7) % 150
-		draw_rect(Rect2(x, y, 1, 1), Color(0.6, 0.65, 0.85, 0.3))
-	# 가로등
-	for x in [500.0, 820.0]:
-		draw_rect(Rect2(x, g - 46, 2, 46), Color8(40, 40, 60))
-		draw_rect(Rect2(x - 3, g - 49, 8, 4), Color8(255, 214, 140))
-		draw_circle(Vector2(x + 1, g - 46), 16, Color(1, 0.8, 0.45, 0.10))
-	_prop("bench", Vector2(640, g))
-
-
 func _draw_building() -> void:
 	var font := get_theme_default_font()
 	var wall := Color8(140, 144, 182)
 	var inside := Color8(66, 56, 84)
+	var hall_in := Color8(56, 50, 80)
 	var slab := Color8(196, 200, 226)
-	var f0 := FLOOR_Y[0]
-	var f1 := FLOOR_Y[1]
-	var f2 := FLOOR_Y[2]
+	var f0: float = FLOOR_Y[0]
+	var f1: float = FLOOR_Y[1]
+	var f2: float = FLOOR_Y[2]
 
 	# 지하 1층 (잠김): 어두운 방과 둥근 문
 	draw_rect(Rect2(B_X0, f0 + 10, B_X1 - B_X0, B1_Y - f0), Color8(18, 14, 26))
-	draw_string(font, Vector2(B_X0 + 70, f0 + 30), "지하 1층 (잠김)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(Pal.DIM, 0.7))
-	var vault := Vector2(1300, f0 + 50)
+	draw_string(font, Vector2(B_X0 + 20, f0 + 30), "지하 1층 · 별지기의 방 (잠김)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(Pal.DIM, 0.7))
+	var vault := Vector2(380, f0 + 50)
 	draw_circle(vault, 22, Color8(60, 54, 70))
 	draw_arc(vault, 22, 0, TAU, 32, Color(1, 0.84, 0.4, 0.35 + 0.15 * sin(_t * 1.5)), 2.0)
-	for i in 7:
-		var a := TAU * i / 7.0 - PI / 2.0
-		var lit := i < Game.pieces()
-		draw_circle(vault + Vector2.from_angle(a) * 14.0, 2.5, Pal.GOLD if lit else Color8(30, 26, 40))
 
-	# 바깥벽, 각 층 바닥판
+	# 바깥벽과 방 안쪽
 	draw_rect(Rect2(B_X0, f2, B_X1 - B_X0, f0 - f2), wall)
 	for f in [f0, f1]:
-		draw_rect(Rect2(B_X0 + 12, f - 100, B_X1 - B_X0 - 24, 100), inside)
-	draw_rect(Rect2(B_X0, f1, B_X1 - B_X0, 10), slab)               # 2층 바닥
+		draw_rect(Rect2(B_X0 + 12, f - 100, HALL_X0 - B_X0 - 16, 100), inside)
+		draw_rect(Rect2(HALL_X1 + 4, f - 100, B_X1 - HALL_X1 - 16, 100), inside)
+	draw_rect(Rect2(HALL_X0 + 4, f2 + 10, HALL_X1 - HALL_X0 - 8, f0 - f2 - 10), hall_in)   # 2개 층 높이의 큰 홀
+	# 바닥판: 2층은 양쪽 방과, 홀을 가로지르는 다리(난간)
+	draw_rect(Rect2(B_X0, f1, HALL_X0 - B_X0 + 4, 10), slab)
+	draw_rect(Rect2(HALL_X1 - 4, f1, B_X1 - HALL_X1 + 4, 10), slab)
+	draw_rect(Rect2(HALL_X0, f1, HALL_X1 - HALL_X0, 4), slab.darkened(0.15))
+	for x in range(int(HALL_X0), int(HALL_X1), 10):
+		draw_rect(Rect2(x, f1 - 14, 1, 14), Color8(150, 154, 190))
+	draw_rect(Rect2(HALL_X0, f1 - 15, HALL_X1 - HALL_X0, 2), Color8(170, 174, 206))
 	draw_rect(Rect2(B_X0, f2, B_X1 - B_X0, 10), slab)               # 옥상 바닥
 	draw_rect(Rect2(B_X0, f0, B_X1 - B_X0, 10), Color8(110, 92, 110))
-	# 입구 (1층 왼쪽 벽에 문)
-	draw_rect(Rect2(B_X0, f0 - 46, 12, 46), Color8(110, 78, 60))
-	draw_rect(Rect2(838, f0 - 30, 2, 30), Color8(80, 70, 90))          # 마당의 안내판
-	draw_rect(Rect2(878, f0 - 30, 2, 30), Color8(80, 70, 90))
-	draw_rect(Rect2(824, f0 - 46, 70, 16), Color8(34, 30, 60))
-	draw_string(font, Vector2(826, f0 - 34), "어린이천문대", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	# 계단 (왼쪽, 모든 층)
-	for f in [f0, f1]:
-		for i in 8:
-			draw_rect(Rect2(STAIRS_X - 18 + i * 4, f - 4 - i * 12, 10, 3), Color8(150, 140, 180))
-		draw_string(font, Vector2(STAIRS_X - 18, f - 86), "계단", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	# 1층 오른쪽 벽의 문 (바깥으로)
+	draw_rect(Rect2(B_X1 - 12, f0 - 46, 12, 46), Color8(110, 78, 60))
 	# 천장 조명
 	for f in [f0, f1]:
-		for lx in [1060.0, 1260.0, 1460.0]:
+		for lx in [120.0, 230.0, 540.0, 650.0]:
 			draw_rect(Rect2(lx, f - 100, 6, 3), Color8(255, 220, 150))
 			draw_circle(Vector2(lx + 3, f - 96), 20, Color(1, 0.85, 0.55, 0.07))
 
-	# 1층 로비
-	draw_string(font, Vector2(B_X0 + 70, f0 - 84), "1층 로비", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	_prop("desk", Vector2(1060, f0))                                    # 선생님 책상 (쪽지)
-	_prop("orrery", Vector2(1180, f0))                                  # 지구 공전 모형
-	_prop("dial", Vector2(1320, f0))                                    # 푸코 진자: 바닥 눈금판
-	var swing := sin(_t * TAU / 4.0) * 14.0                             # 추는 줄에 매달려 흔들림
-	var bob := Vector2(1320 + swing, f0 - 10)
-	draw_line(Vector2(1320, f0 - 100), bob + Vector2(0, -9), Color8(200, 200, 220), 1)
-	_prop("bob", bob)
-	_prop("door", Vector2(1491, f0))                                    # 지하로 가는 문
+	# 가운데 홀: 나선 계단 (층마다 같은 자리)
+	for f in [f0, f1]:
+		for i in 9:
+			var a := float(i) / 8.0
+			draw_rect(Rect2(STAIRS_X - 16 + sin(a * TAU) * 10.0, f - 6 - i * 11, 22, 3), Color8(150, 140, 180))
+		draw_rect(Rect2(STAIRS_X - 2, f - 100, 3, 100), Color8(110, 104, 140))
+	draw_string(font, Vector2(STAIRS_X - 24, f0 - 92), "나선 계단", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+
+	# 방 이름
+	draw_string(font, Vector2(B_X0 + 20, f0 - 84), "1층 창고 · 실습실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	draw_string(font, Vector2(HALL_X1 + 16, f0 - 84), "1층 책방", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	draw_string(font, Vector2(B_X0 + 20, f1 - 84), "2층 선생님 사무실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	draw_string(font, Vector2(HALL_X1 + 16, f1 - 84), "2층 강의실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+
+	_draw_storage(f0)
+	_draw_hall(f0, f2)
+	_draw_bookshop(font, f0)
+	_draw_office(f1)
+	_draw_lecture(font, f1)
+	_draw_roof(font, f2)
+
+
+## 1층 창고(실습실): 지구 공전 모형, 아이들이 만든 종이 앙부일구, 지하로 가는 문
+func _draw_storage(f0: float) -> void:
+	for i in 3:                                                         # 선반의 상자들
+		draw_rect(Rect2(60 + i * 14, f0 - 70 + (i % 2) * 6, 12, 10), Color8(150, 120, 90))
+	_prop("orrery", Vector2(95, f0))
+	# 실습 책상 위의 종이 앙부일구 (반구 그릇 모양)
+	draw_rect(Rect2(156, f0 - 16, 40, 3), Color8(150, 110, 80))
+	draw_rect(Rect2(160, f0 - 13, 2, 13), Color8(90, 66, 50))
+	draw_rect(Rect2(190, f0 - 13, 2, 13), Color8(90, 66, 50))
+	if npc_state("bori") == "dormant":
+		draw_arc(Vector2(175, f0 - 17), 9, 0, PI, 10, Color8(240, 230, 200), 3)
+		draw_line(Vector2(175, f0 - 17), Vector2(175, f0 - 26), Color8(90, 70, 50), 1)
+	_glow_if_freed("bori", Rect2(160, f0 - 32, 30, 18))
+	_prop("door", Vector2(262, f0))                                     # 지하로 가는 문
 	for i in 7:                                                         # 문 위 별 모양 홈 7개: 모은 조각만큼 빛남
 		if i < Game.pieces():
-			var hole := Vector2(1491, f0 - DOOR_RING.y) + Vector2.from_angle(-PI / 2.0 + TAU * i / 7.0) * DOOR_RING.x
+			var hole := Vector2(262, f0 - DOOR_RING.y) + Vector2.from_angle(-PI / 2.0 + TAU * i / 7.0) * DOOR_RING.x
 			draw_circle(hole, 2.2, Pal.GOLD)
 			draw_circle(hole, 5.0, Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0 + i)))
 
-	# 2층 전시실
-	draw_string(font, Vector2(B_X0 + 70, f1 - 84), "2층 전시실 · 옛사람들의 하늘", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	_draw_case(1010.0, f1, Color8(170, 130, 90), "tablet")             # 점토판
-	_draw_case(1090.0, f1, Color8(190, 170, 110), "bamboo")            # 죽간
-	_draw_case(1260.0, f1, Color8(170, 90, 60), "vase")                # 그리스 도기
-	# 누트 여신 그림
-	draw_rect(Rect2(1146, f1 - 70, 48, 36), Color8(196, 160, 100))
-	draw_rect(Rect2(1148, f1 - 68, 44, 32), Color8(28, 40, 96))
-	draw_arc(Vector2(1170, f1 - 40), 18, PI, TAU, 16, Color8(236, 188, 76), 2)
-	draw_line(Vector2(1150, f1 - 42), Vector2(1190, f1 - 42), Color8(90, 150, 80), 1)
-	if npc_state("keti") == "dormant":
-		draw_rect(Rect2(1168, f1 - 56, 4, 8), Color8(244, 240, 228))
-	_glow_if_freed("keti", Rect2(1144, f1 - 72, 52, 40))
-	# 절기 농사 달력 (족자)
-	draw_rect(Rect2(1336, f1 - 78, 28, 2), Color8(120, 84, 60))
-	draw_rect(Rect2(1338, f1 - 76, 24, 44), Color8(232, 222, 196))
-	for i in 4:
-		draw_rect(Rect2(1341, f1 - 72 + i * 10, 18, 1), Color8(170, 150, 110))
-	draw_circle(Vector2(1350, f1 - 64), 3, Color8(220, 80, 70))
-	if npc_state("bori") == "dormant":
-		draw_rect(Rect2(1348, f1 - 48, 4, 7), Color8(226, 196, 110))
-	_glow_if_freed("bori", Rect2(1334, f1 - 80, 32, 52))
-	# 천상열차분야지도 (돌판)
-	draw_rect(Rect2(1430, f1 - 80, 40, 80), Color8(110, 108, 118))
-	draw_rect(Rect2(1434, f1 - 76, 32, 32), Color8(80, 78, 90))
-	draw_arc(Vector2(1450, f1 - 60), 14, 0, TAU, 20, Color8(170, 168, 180), 1)
-	for i in 14:
-		draw_rect(Rect2(1437 + (i * 7) % 26, f1 - 73 + (i * 11) % 26, 1, 1), Color8(230, 230, 240))
-	_glow_if_freed("dolsoe", Rect2(1428, f1 - 82, 44, 82))
 
-	_draw_wing(font, f0, f1)
-
-	# 3층 옥상 관측 데크
-	for x in range(int(B_X0), int(B_X1), 14):
-		draw_rect(Rect2(x, f2 - 16, 2, 16), Color8(150, 154, 190))
-	draw_rect(Rect2(B_X0, f2 - 18, B_X1 - B_X0, 2), Color8(170, 174, 206))
-	var dome := PackedVector2Array()                                     # 돔 (반구)
-	for i in 25:
-		dome.append(Vector2(1440, f2) + Vector2.from_angle(PI + PI * i / 24.0) * 56.0)
-	draw_colored_polygon(dome, Color8(170, 174, 206))
-	draw_rect(Rect2(1384, f2, 112, 10), slab)
-	draw_rect(Rect2(1432, f2 - 56, 16, 56), Color8(60, 40, 40))
-	draw_rect(Rect2(1434, f2 - 52, 12, 52), Color8(255, 196, 120))
-	_prop("telescope", Vector2(1100, f2))                               # 북쪽 하늘 망원경
-	draw_rect(Rect2(988, f2 - 30, 24, 12), Color8(34, 30, 60))           # 서쪽 난간의 방위 표지판
-	draw_string(font, Vector2(990, f2 - 21), "← 서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	# 옥상으로 올라오는 계단 입구
-	draw_rect(Rect2(STAIRS_X - 14, f2 - 30, 28, 30), Color8(90, 92, 130))
-	draw_rect(Rect2(STAIRS_X - 10, f2 - 26, 20, 26), Color8(40, 36, 60))
+## 가운데 홀: 돔 꼭대기에서 1층까지 내려온 푸코 진자
+func _draw_hall(f0: float, f2: float) -> void:
+	_prop("dial", Vector2(PEND_X, f0))
+	var swing := sin(_t * TAU / 4.0) * 14.0                             # 추는 긴 줄에 매달려 흔들림
+	var bob := Vector2(PEND_X + swing, f0 - 10)
+	draw_line(Vector2(PEND_X, f2 + 10), bob + Vector2(0, -9), Color8(200, 200, 220), 1)
+	_prop("bob", bob)
 
 
-## 오른쪽 새 건물: 1층 책방, 2층 강의실
-func _draw_wing(font: Font, f0: float, f1: float) -> void:
-	for f in [f0, f1]:                                                   # 칸막이 벽 (아래는 문)
-		draw_rect(Rect2(WING_X - 3, f - 100, 6, 52), Color8(120, 124, 160))
-		draw_rect(Rect2(WING_X - 5, f - 50, 10, 3), Color8(150, 154, 190))
-	for lx in [1640.0, 1760.0]:
-		for f in [f0, f1]:
-			draw_rect(Rect2(lx, f - 100, 6, 3), Color8(255, 220, 150))
-			draw_circle(Vector2(lx + 3, f - 96), 20, Color(1, 0.85, 0.55, 0.07))
-	# 1층 책방: 책장과 교재 책상
-	draw_string(font, Vector2(WING_X + 16, f0 - 84), "1층 책방", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+## 1층 책방: 책장, 교재 책상, 교재 펼친 쪽(이나), 그리스로마신화 만화책(테오)
+func _draw_bookshop(font: Font, f0: float) -> void:
 	var spine := [Color8(200, 80, 70), Color8(70, 130, 200), Color8(230, 190, 80), Color8(90, 170, 110), Color8(170, 110, 190), Color8(240, 240, 230)]
-	for shelf in [[1572.0, 84.0], [1720.0, 100.0]]:
-		var x0: float = shelf[0]
-		draw_rect(Rect2(x0, f0 - 70, shelf[1], 70), Color8(110, 78, 60))
-		for row in 3:
-			var y := f0 - 64 + row * 22
-			draw_rect(Rect2(x0 + 3, y + 16, shelf[1] - 6, 2), Color8(80, 56, 44))
-			var bx := x0 + 4
-			var i := row * 3
-			while bx < x0 + shelf[1] - 8:
-				var bw := 3 + (i * 7) % 3
-				var bh := 11 + (i * 5) % 5
-				draw_rect(Rect2(bx, y + 16 - bh, bw, bh), spine[i % spine.size()])
-				bx += bw + 1
-				i += 1
-	draw_rect(Rect2(1666, f0 - 22, 30, 22), Color8(140, 100, 70))
-	draw_rect(Rect2(1670, f0 - 26, 10, 4), Color8(70, 130, 200))
-	draw_rect(Rect2(1682, f0 - 25, 10, 3), Color8(230, 190, 80))
-	draw_string(font, Vector2(1668, f0 - 30), "교재", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	# 2층 강의실: 칠판, 책상, 엎드려 잠든 친구들
-	draw_string(font, Vector2(WING_X + 16, f1 - 84), "2층 강의실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_rect(Rect2(1566, f1 - 78, 96, 46), Color8(120, 90, 60))
-	draw_rect(Rect2(1569, f1 - 75, 90, 40), Color8(36, 72, 56))
+	var x0 := 470.0
+	draw_rect(Rect2(x0, f0 - 70, 22, 70), Color8(110, 78, 60))
+	for row in 3:
+		for k in 4:
+			draw_rect(Rect2(x0 + 2 + k * 5, f0 - 64 + row * 22, 4, 14), spine[(row * 4 + k) % spine.size()])
+	draw_rect(Rect2(492, f0 - 22, 30, 22), Color8(140, 100, 70))      # 교재 책상
+	draw_rect(Rect2(496, f0 - 26, 10, 4), Color8(70, 130, 200))
+	draw_string(font, Vector2(494, f0 - 30), "교재", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+	# 교재 펼친 쪽: 옛사람들의 세계 지도 (받침대 위에 펼친 책)
+	draw_rect(Rect2(578, f0 - 24, 4, 24), Color8(100, 80, 60))
+	draw_rect(Rect2(566, f0 - 34, 28, 12), Color8(240, 232, 210))
+	if npc_state("ina") == "dormant":
+		draw_circle(Vector2(573, f0 - 28), 4, Color8(180, 140, 90))
+		draw_circle(Vector2(587, f0 - 28), 4, Color8(180, 140, 90))
+	_glow_if_freed("ina", Rect2(564, f0 - 36, 32, 16))
+	# 만화책 진열대 (테오)
+	draw_rect(Rect2(640, f0 - 40, 32, 40), Color8(110, 78, 60))
+	draw_rect(Rect2(645, f0 - 36, 22, 28), Color8(80, 120, 200))
+	draw_string(font, Vector2(646, f0 - 18), "신화", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color8(255, 230, 140))
+	_glow_if_freed("teo", Rect2(642, f0 - 38, 28, 32))
+
+
+## 2층 선생님 사무실: 바다 별 사진(돌쇠), 책상과 쪽지, 지구본(휘)
+func _draw_office(f1: float) -> void:
+	draw_rect(Rect2(64, f1 - 74, 34, 26), Color8(196, 160, 100))      # 사진 액자
+	draw_rect(Rect2(66, f1 - 72, 30, 22), Color8(16, 18, 46))
+	for i in 7:
+		draw_rect(Rect2(70 + i * 3, f1 - 68 + (i * 5) % 9, 1, 1), Color8(240, 240, 255))
+	if npc_state("dolsoe") == "dormant":
+		draw_rect(Rect2(86, f1 - 56, 5, 4), Color8(230, 220, 190))     # 사진 속 작은 돛배
+	_glow_if_freed("dolsoe", Rect2(62, f1 - 76, 38, 30))
+	_prop("desk", Vector2(160, f1))
+	# 지구본 (받침대 위의 둥근 지구)
+	draw_rect(Rect2(241, f1 - 14, 8, 14), Color8(140, 110, 70))
+	draw_circle(Vector2(245, f1 - 24), 10, Color8(70, 130, 200))
+	draw_circle(Vector2(242, f1 - 27), 4, Color8(110, 180, 110))
+	draw_arc(Vector2(245, f1 - 24), 12, PI * 0.6, PI * 1.9, 12, Color8(200, 170, 90), 1.0)
+	_glow_if_freed("hwi", Rect2(231, f1 - 38, 28, 38))
+
+
+## 2층 강의실: 칠판, 판서 그림(케티), 잠든 친구들
+func _draw_lecture(font: Font, f1: float) -> void:
+	draw_rect(Rect2(470, f1 - 78, 44, 46), Color8(120, 90, 60))      # 칠판
+	draw_rect(Rect2(473, f1 - 75, 38, 40), Color8(36, 72, 56))
 	for i in 5:
-		draw_rect(Rect2(1574, f1 - 70 + i * 7, 30 + (i * 17) % 40, 1), Color(0.9, 0.95, 0.9, 0.7))
-	draw_circle(Vector2(1644, f1 - 56), 6, Color(0.9, 0.95, 0.9, 0.7))
-	draw_circle(Vector2(1641, f1 - 56), 6, Color8(36, 72, 56))
+		draw_rect(Rect2(477, f1 - 70 + i * 7, 14 + (i * 7) % 16, 1), Color(0.9, 0.95, 0.9, 0.7))
+	# 판서 그림: 누트 여신이 하늘처럼 몸을 굽힌 그림 (큰 종이)
+	draw_rect(Rect2(520, f1 - 74, 36, 30), Color8(240, 232, 210))
+	draw_arc(Vector2(538, f1 - 50), 13, PI, TAU, 14, Color8(40, 60, 140), 2)
+	draw_line(Vector2(524, f1 - 49), Vector2(552, f1 - 49), Color8(90, 150, 80), 1)
+	if npc_state("keti") == "dormant":
+		draw_rect(Rect2(536, f1 - 62, 4, 8), Color8(180, 120, 80))
+	_glow_if_freed("keti", Rect2(518, f1 - 76, 40, 34))
 	var kids := SheetSprite.named("kids")
 	for k in 4:
-		var dx := 1672.0 + k * 42.0
+		var dx := 580.0 + k * 35.0
 		# 숨쉬기 (1.2초마다 들숨·날숨), 사람마다 9초에 한 번씩 1.5초 동안 잠꼬대
 		var talk := fmod(_t + k * 2.3, 9.0) < 1.5
 		var fi := 2 if talk else int(_t / 1.2 + k) % 2
@@ -539,20 +569,27 @@ func _draw_wing(font: Font, f0: float, f1: float) -> void:
 		draw_string(font, Vector2(dx + 6 + zt * 6, f1 - 36 - zt * 14), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(0.8, 0.85, 1.0, 1.0 - zt))
 
 
+## 3층 옥상: 난간, 서쪽 표지판, 망원경, 홀 위의 돔, 계단 출구
+func _draw_roof(font: Font, f2: float) -> void:
+	for x in range(int(B_X0), int(B_X1), 14):
+		draw_rect(Rect2(x, f2 - 16, 2, 16), Color8(150, 154, 190))
+	draw_rect(Rect2(B_X0, f2 - 18, B_X1 - B_X0, 2), Color8(170, 174, 206))
+	var dome := PackedVector2Array()
+	for i in 25:
+		dome.append(Vector2(DOME_X, f2) + Vector2.from_angle(PI + PI * i / 24.0) * 58.0)
+	draw_colored_polygon(dome, Color8(170, 174, 206))
+	draw_rect(Rect2(DOME_X - 8, f2 - 58, 16, 58), Color8(60, 40, 40))
+	draw_rect(Rect2(DOME_X - 6, f2 - 54, 12, 54), Color8(255, 196, 120))
+	draw_rect(Rect2(58, f2 - 30, 24, 12), Color8(34, 30, 60))           # 서쪽 난간의 방위 표지판
+	draw_string(font, Vector2(60, f2 - 21), "← 서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+	_prop("telescope", Vector2(180, f2))                                # 북쪽 하늘 망원경
+	draw_rect(Rect2(STAIRS_X - 14, f2 - 30, 28, 30), Color8(90, 92, 130))   # 나선 계단 출구
+	draw_rect(Rect2(STAIRS_X - 10, f2 - 26, 20, 26), Color8(40, 36, 60))
+
+
 ## 관측 장치·소품 그림 (props 시트). feet: 바닥 가운데
 func _prop(name: String, feet: Vector2) -> void:
 	SheetSprite.named("props").draw(self, name, 0, feet, false, CHAR_H)
-
-
-## 유물이 든 유리 진열장
-func _draw_case(x: float, f: float, color: Color, spot: String) -> void:
-	draw_rect(Rect2(x - 14, f - 18, 28, 18), Color8(90, 78, 110))
-	draw_rect(Rect2(x - 12, f - 44, 24, 26), Color(0.7, 0.85, 1.0, 0.12))
-	draw_rect(Rect2(x - 12, f - 44, 24, 26), Color(0.7, 0.85, 1.0, 0.35), false, 1.0)
-	draw_rect(Rect2(x - 6, f - 34, 12, 14), color)
-	for id in NPC_PLAN:
-		if NPC_PLAN[id]["home"] == spot:
-			_glow_if_freed(id, Rect2(x - 14, f - 46, 28, 30))
 
 
 func _glow_if_freed(id: String, r: Rect2) -> void:
@@ -566,7 +603,7 @@ func _draw_people() -> void:
 			continue
 		var p: Vector2 = npc[id]
 		var f := int(p.y)
-		var on_pier := f == 0 and p.x < 420
+		var on_pier := f == 0 and p.x > YARD_X1
 		var feet := Vector2(p.x, floor_y(f) - (4 if on_pier else 0))
 		if id == "keti":
 			feet.y += sin(_t * 2.0) - 2.0
@@ -582,8 +619,7 @@ func _draw_people() -> void:
 		draw_circle(tf + Vector2(0, -CHAR_H * 0.65), CHAR_H * 0.8, Color(1.0, 0.72, 0.42, 0.22))
 		t_sp.draw(self, "wave" if near else "idle", 0 if near else t_sp.frame_at("idle", _t), tf, player_x < TEACHER_X,
 				CHAR_H, Color(0.16, 0.13, 0.22))                # 해를 등져 얼굴이 보이지 않는 실루엣
-	var on_pier := floor_i == 0 and player_x < 420
-	var ground_y := floor_y(floor_i) - (4 if on_pier else 0)
+	var ground_y := floor_y(floor_i) - (4 if floor_i == 0 and _on_pier() else 0)
 	if y_off < 0.0:
 		var w := 16.0 * (1.0 + y_off / 80.0)
 		draw_rect(Rect2(player_x - w / 2.0, ground_y - 1, w, 2), Color(0, 0, 0, 0.35))

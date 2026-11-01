@@ -221,7 +221,7 @@ func _on_interact(id: String) -> void:
 		"bench": await _bench()
 		"stairs": await _stairs()
 		"b1door": await _b1door()
-		"tablet", "bamboo", "vase", "calendar", "nut", "starmap": await _artifact(id)
+		"comic", "mapbook", "sundial", "drawing", "photo", "globe": await _artifact(id)
 		"telescope": _open(SkyScript.new())
 		"sunset": _open(SunsetScript.new())
 		"books": _open(BookScript.new())
@@ -301,7 +301,7 @@ func _note() -> void:
 	Game.add_fact("note")
 
 
-## 유물을 조사했을 때: 잠들어 있음 / 사람이 빠져나감 / 아침으로 돌아감
+## 손님이 깨어나는 자료를 조사했을 때: 잠들어 있음 / 사람이 빠져나감 / 아침으로 돌아감
 func _artifact(spot: String) -> void:
 	var who := ""
 	for id in world.NPC_PLAN:
@@ -310,9 +310,9 @@ func _artifact(spot: String) -> void:
 	var state: String = world.npc_state(who) if who != "" else "dormant"
 	var text: String = Story.SLEEPING[spot]
 	if state == "freed":
-		text = "유물 속 조각 하나가 금빛으로 빛난다. %s는 무사히 아침으로 돌아간 것 같다." % Story.NPC[who]["name"]
+		text = "자료 속 조각 하나가 금빛으로 빛난다. %s는 무사히 아침으로 돌아간 것 같다." % Story.NPC[who]["name"]
 	elif state != "dormant":
-		text = "유물 속 사람 모습이 사라졌다! 어디로 간 걸까?"
+		text = "자료 속 사람 모습이 사라졌다! 어디로 간 걸까?"
 	await dialogue.say([["", text]])
 
 

@@ -1,5 +1,5 @@
 extends Control
-## 1층 로비의 지구 공전 모형입니다.
+## 1층 창고(실습실)의 지구 공전 모형입니다.
 ## 달(1월~12월)을 바꾸고 자전축 기울기(23.5° / 0°)를 바꾸면,
 ## 북위 34° 섬에서의 '한낮의 해 높이', '낮의 길이', '태양까지 거리'가 나옵니다.
 ##   한낮의 해 높이 = 90° − 위도 + 태양의 적위
@@ -127,7 +127,7 @@ func _season() -> String:
 func _draw() -> void:
 	var font := get_theme_default_font()
 	draw_rect(Rect2(Vector2.ZERO, size), Color8(20, 18, 34))
-	draw_string(font, Vector2(10, 16), "1층 로비 · 지구 공전 모형", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
+	draw_string(font, Vector2(10, 16), "1층 창고 · 지구 공전 모형", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	# 궤도와 태양
 	var pts := PackedVector2Array()
 	for i in 49:

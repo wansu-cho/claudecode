@@ -135,7 +135,7 @@ func _run() -> void:
 
 	# 5-1) 책방 교재, 강의실 칠판과 잠든 친구들
 	w.go_floor(0)
-	w.player_x = 1680.0
+	w.player_x = w.spot_x("books")
 	await _frames(3)
 	await _open("books")
 	main._overlay.open_page(6)
@@ -143,7 +143,7 @@ func _run() -> void:
 	await _shot("book")
 	main._overlay.close()
 	w.go_floor(1)
-	w.player_x = 1610.0
+	w.player_x = w.spot_x("blackboard")
 	await _frames(3)
 	await _shot("lecture_room")
 	await _open("blackboard")
@@ -155,7 +155,7 @@ func _run() -> void:
 	# 7) 부두 쌍안경: 연락선 (20:35)
 	game.minutes = game.at("20:35")
 	w.go_floor(0)
-	w.player_x = 40.0
+	w.player_x = w.spot_x("binoculars")
 	await _frames(2)
 	await _open("binoculars")
 	await _wait(1.6)
@@ -165,7 +165,7 @@ func _run() -> void:
 
 	# 8) 돌쇠 (항구, 21:00): 처음 만나면 이야기 → 증거
 	game.minutes = game.at("21:00")
-	w.npc["dolsoe"] = Vector2(260, 0)
+	w.npc["dolsoe"] = Vector2(1040, 0)
 	await _persuade("dolsoe", ["polaris_cas"], "")
 	_check(not game.freed.has("dolsoe"), "돌쇠: 북극성만으로는 설득 안 됨")
 	await _persuade("dolsoe", ["polaris_cas", "ship_horizon"], "")
@@ -174,14 +174,14 @@ func _run() -> void:
 	_check(game.freed.has("dolsoe"), "돌쇠 귀환")
 
 	# 9) 이나 (항구): 틀린 증거 한 번 → 맞는 증거
-	w.npc["ina"] = Vector2(110, 0)
+	w.npc["ina"] = Vector2(1130, 0)
 	await _persuade("ina", ["pendulum"], "")
 	_check(not game.freed.has("ina"), "이나: 진자로는 설득 안 됨")
 	await _persuade("ina", ["ship_horizon"], "ina")
 	_check(game.freed.has("ina"), "이나 귀환")
 
 	# 10) 보리 (1층 로비): 하나만 → 둘 다
-	w.npc["bori"] = Vector2(1125, 0)
+	w.npc["bori"] = Vector2(135, 0)
 	await _persuade("bori", ["perihelion"], "")
 	_check(not game.freed.has("bori"), "보리: 하나만으로는 설득 안 됨")
 	await _persuade("bori", ["perihelion", "tilt_seasons"], "bori")
@@ -209,8 +209,8 @@ func _run() -> void:
 	dome.close()
 
 	# 11) 케티, 휘 (옥상, 23:00)
-	w.npc["keti"] = Vector2(1240, 2)
-	w.npc["hwi"] = Vector2(1370, 2)
+	w.npc["keti"] = Vector2(600, 2)
+	w.npc["hwi"] = Vector2(530, 2)
 	await _frames(3)
 	await _shot("roof_people")
 	await _persuade("keti", ["pendulum", "star_trail"], "")
@@ -222,8 +222,8 @@ func _run() -> void:
 
 	# 12) 테오: 힌트 듣기 → 돔에서 노인성(01:20) → 증거
 	game.minutes = game.at("01:20")
-	w.npc["teo"] = Vector2(1300, 2)
-	w.player_x = 1300.0
+	w.npc["teo"] = Vector2(650, 2)
+	w.player_x = 650.0
 	await _frames(2)
 	main._on_interact("teo")
 	await _advance()
@@ -247,7 +247,7 @@ func _run() -> void:
 
 	# 13) 지하 문: 조각 6개
 	w.go_floor(0)
-	w.player_x = 1490.0
+	w.player_x = w.spot_x("b1door")
 	await _frames(4)
 	await _shot("b1door")
 

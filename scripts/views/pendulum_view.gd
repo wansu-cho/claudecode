@@ -84,7 +84,7 @@ func _dir(a_deg: float) -> Vector2:
 func _draw() -> void:
 	var font := get_theme_default_font()
 	draw_rect(Rect2(Vector2.ZERO, size), Color8(30, 26, 44))
-	draw_string(font, Vector2(10, 16), "로비 · 푸코 진자 (위에서 본 모습) · %s" % Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
+	draw_string(font, Vector2(10, 16), "1층 가운데 홀 · 푸코 진자 (위에서 본 모습) · %s" % Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	draw_circle(CENTER, R + 8, Color8(56, 48, 76))
 	draw_circle(CENTER, R, Color8(72, 62, 96))
 	for i in 72:
