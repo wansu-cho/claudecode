@@ -32,6 +32,8 @@ const NPC_SPEED := 55.0
 const REACH := 24.0
 const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새 그림(시트)은 이 키로 그림
 const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
+## 지하 문의 별 모양 홈: (고리 반지름, 문 바닥에서 고리 가운데까지 높이) — 게임 좌표
+const DOOR_RING := Vector2(6.1, 36.8)
 const HD := {"keti": "keti", "teo": "teo", "ina": "ina", "dolsoe": "dolsoe", "bori": "bori", "hwi": "hwi"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
@@ -346,9 +348,7 @@ func _draw_harbor() -> void:
 		draw_rect(Rect2(fx - 1, fy - 46, 2, 18), Color8(90, 90, 110))
 		draw_rect(Rect2(fx - 2, fy - 48, 4, 3), Color8(255, 240, 200))
 		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 52), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	# 쌍안경
-	draw_rect(Rect2(36, g - 18, 2, 14), Color8(80, 80, 100))
-	draw_rect(Rect2(31, g - 24, 12, 6), Color8(60, 120, 160))
+	_prop("binoculars", Vector2(36, g - 4))                             # 부두 쌍안경
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
 		if boat_x < WORLD_W:
 			var bob := sin(_t * 1.5) * 1.5
@@ -376,11 +376,7 @@ func _draw_land() -> void:
 		draw_rect(Rect2(x, g - 46, 2, 46), Color8(40, 40, 60))
 		draw_rect(Rect2(x - 3, g - 49, 8, 4), Color8(255, 214, 140))
 		draw_circle(Vector2(x + 1, g - 46), 16, Color(1, 0.8, 0.45, 0.10))
-	# 벤치
-	draw_rect(Rect2(626, g - 12, 28, 3), Color8(120, 84, 60))
-	draw_rect(Rect2(626, g - 20, 28, 2), Color8(120, 84, 60))
-	draw_rect(Rect2(628, g - 9, 2, 9), Color8(60, 44, 40))
-	draw_rect(Rect2(650, g - 9, 2, 9), Color8(60, 44, 40))
+	_prop("bench", Vector2(640, g))
 
 
 func _draw_building() -> void:
@@ -429,22 +425,19 @@ func _draw_building() -> void:
 
 	# 1층 로비
 	draw_string(font, Vector2(B_X0 + 70, f0 - 84), "1층 로비", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_rect(Rect2(1044, f0 - 22, 34, 4), Color8(120, 84, 60))      # 선생님 책상
-	draw_rect(Rect2(1046, f0 - 18, 2, 18), Color8(80, 56, 44))
-	draw_rect(Rect2(1074, f0 - 18, 2, 18), Color8(80, 56, 44))
-	draw_rect(Rect2(1054, f0 - 25, 10, 3), Color8(244, 240, 228))
-	draw_rect(Rect2(1170, f0 - 20, 20, 20), Color8(90, 78, 110))      # 지구 공전 모형 (받침대)
-	draw_circle(Vector2(1180, f0 - 32), 5, Color8(255, 210, 110))
-	draw_arc(Vector2(1180, f0 - 32), 14, 0, TAU, 24, Color(0.8, 0.8, 1.0, 0.5), 1.0)
-	var orb := Vector2(1180, f0 - 32) + Vector2.from_angle(_t * 0.8) * Vector2(14, 5)
-	draw_circle(orb, 2.5, Color8(90, 150, 230))
-	var swing := sin(_t * TAU / 4.0) * 16.0                            # 푸코 진자
-	draw_line(Vector2(1320, f0 - 100), Vector2(1320 + swing, f0 - 22), Color8(200, 200, 220), 1)
-	draw_circle(Vector2(1320 + swing, f0 - 20), 5, Color8(230, 190, 90))
-	draw_rect(Rect2(1280, f0 - 4, 80, 3), Color8(90, 80, 120))
-	draw_rect(Rect2(1478, f0 - 40, 26, 40), Color8(54, 48, 66))      # 지하로 가는 문
-	draw_rect(Rect2(1480, f0 - 38, 22, 38), Color8(40, 36, 52))
-	draw_circle(Vector2(1491, f0 - 22), 3, Pal.GOLD)
+	_prop("desk", Vector2(1060, f0))                                    # 선생님 책상 (쪽지)
+	_prop("orrery", Vector2(1180, f0))                                  # 지구 공전 모형
+	_prop("dial", Vector2(1320, f0))                                    # 푸코 진자: 바닥 눈금판
+	var swing := sin(_t * TAU / 4.0) * 14.0                             # 추는 줄에 매달려 흔들림
+	var bob := Vector2(1320 + swing, f0 - 10)
+	draw_line(Vector2(1320, f0 - 100), bob + Vector2(0, -9), Color8(200, 200, 220), 1)
+	_prop("bob", bob)
+	_prop("door", Vector2(1491, f0))                                    # 지하로 가는 문
+	for i in 7:                                                         # 문 위 별 모양 홈 7개: 모은 조각만큼 빛남
+		if i < Game.pieces():
+			var hole := Vector2(1491, f0 - DOOR_RING.y) + Vector2.from_angle(-PI / 2.0 + TAU * i / 7.0) * DOOR_RING.x
+			draw_circle(hole, 2.2, Pal.GOLD)
+			draw_circle(hole, 5.0, Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0 + i)))
 
 	# 2층 전시실
 	draw_string(font, Vector2(B_X0 + 70, f1 - 84), "2층 전시실 · 옛사람들의 하늘", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
@@ -489,11 +482,7 @@ func _draw_building() -> void:
 	draw_rect(Rect2(1384, f2, 112, 10), slab)
 	draw_rect(Rect2(1432, f2 - 56, 16, 56), Color8(60, 40, 40))
 	draw_rect(Rect2(1434, f2 - 52, 12, 52), Color8(255, 196, 120))
-	var tx := 1100.0                                                     # 망원경
-	draw_line(Vector2(tx, f2 - 26), Vector2(tx - 12, f2), Color8(60, 58, 90), 2)
-	draw_line(Vector2(tx, f2 - 26), Vector2(tx + 12, f2), Color8(60, 58, 90), 2)
-	draw_colored_polygon(PackedVector2Array([Vector2(tx - 18, f2 - 22), Vector2(tx + 16, f2 - 40), Vector2(tx + 19, f2 - 35), Vector2(tx - 15, f2 - 17)]), Color8(224, 226, 240))
-	draw_rect(Rect2(tx - 3, f2 - 29, 6, 4), Color8(80, 80, 120))
+	_prop("telescope", Vector2(1100, f2))                               # 북쪽 하늘 망원경
 	draw_rect(Rect2(988, f2 - 30, 24, 12), Color8(34, 30, 60))           # 서쪽 난간의 방위 표지판
 	draw_string(font, Vector2(990, f2 - 21), "← 서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	# 옥상으로 올라오는 계단 입구
@@ -548,6 +537,11 @@ func _draw_wing(font: Font, f0: float, f1: float) -> void:
 		kids.draw(self, "kid%d" % (k + 1), fi, Vector2(dx, f1), false, CHAR_H)
 		var zt := fmod(_t * 0.6 + k * 0.37, 1.0)
 		draw_string(font, Vector2(dx + 6 + zt * 6, f1 - 36 - zt * 14), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(0.8, 0.85, 1.0, 1.0 - zt))
+
+
+## 관측 장치·소품 그림 (props 시트). feet: 바닥 가운데
+func _prop(name: String, feet: Vector2) -> void:
+	SheetSprite.named("props").draw(self, name, 0, feet, false, CHAR_H)
 
 
 ## 유물이 든 유리 진열장

@@ -64,6 +64,13 @@ SHEETS = {
         "rows": [[["kid1", 3, 0, True]], [["kid2", 3, 0, True]], [["kid3", 3, 0, True]], [["kid4", 3, 0, True]]],
         "height": 0.95,
     },
+    "props": {                        # 관측 장치·소품. 플레이어 키 220픽셀 기준 실제 크기로 그린 것 (ref_px)
+        "cols": 4,
+        "ref_px": 220,
+        "rows": [[["telescope", 1, 0, True], ["orrery", 1, 0, True], ["dial", 1, 0, True], ["bob", 1, 0, True]],
+                 [["binoculars", 1, 0, True], ["bench", 1, 0, True], ["desk", 1, 0, True], ["door", 1, 0, True]]],
+        "height": 1.0,
+    },
     "ina": {
         "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True], ["gaze", 1, 0, True]],
                  [["face", 5, 0, False]]],
@@ -134,10 +141,13 @@ def build(name):
             x0, x1 = cols[k]
             frames[(ri, k)] = key_out(src[y0:y1, x0:x1])
 
-    # 키 맞춤: 대기 1번째 칸의 키
-    a0 = frames[(0, 0)][..., 3] > 0
-    ys = np.where(a0.any(axis=1))[0]
-    scale = TARGET_H * spec["height"] / (ys.max() - ys.min() + 1)
+    # 키 맞춤: 대기 1번째 칸의 키 (소품은 그림 속 플레이어 키 ref_px 기준)
+    if "ref_px" in spec:
+        scale = TARGET_H / spec["ref_px"]
+    else:
+        a0 = frames[(0, 0)][..., 3] > 0
+        ys = np.where(a0.any(axis=1))[0]
+        scale = TARGET_H * spec["height"] / (ys.max() - ys.min() + 1)
 
     out_frames = []                   # [이미지, 발끝 y(축소 후), 가운데 x]
     anims = {}

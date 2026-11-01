@@ -1,0 +1,61 @@
+{
+ "frame_w": 383,
+ "frame_h": 384,
+ "cols": 6,
+ "anchor": [
+  192,
+  364
+ ],
+ "body_h": 168,
+ "height": 1.0,
+ "anims": {
+  "telescope": {
+   "frames": [
+    0
+   ],
+   "fps": 0
+  },
+  "orrery": {
+   "frames": [
+    1
+   ],
+   "fps": 0
+  },
+  "dial": {
+   "frames": [
+    2
+   ],
+   "fps": 0
+  },
+  "bob": {
+   "frames": [
+    3
+   ],
+   "fps": 0
+  },
+  "binoculars": {
+   "frames": [
+    4
+   ],
+   "fps": 0
+  },
+  "bench": {
+   "frames": [
+    5
+   ],
+   "fps": 0
+  },
+  "desk": {
+   "frames": [
+    6
+   ],
+   "fps": 0
+  },
+  "door": {
+   "frames": [
+    7
+   ],
+   "fps": 0
+  }
+ }
+}
