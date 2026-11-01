@@ -59,6 +59,11 @@ SHEETS = {
                  [["wave", 1, 0, True], ["give", 1, 0, True], ["skyward", 1, 0, True]], [["face", 5, 0, False]]],
         "height": 1.35,
     },
+    "kids": {                         # 강의실에서 잠든 친구 4명 (책상·의자 포함). 키 = 앉은 모습 전체 높이
+        "cols": 3,
+        "rows": [[["kid1", 3, 0, True]], [["kid2", 3, 0, True]], [["kid3", 3, 0, True]], [["kid4", 3, 0, True]]],
+        "height": 0.95,
+    },
     "ina": {
         "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True], ["gaze", 1, 0, True]],
                  [["face", 5, 0, False]]],
@@ -80,14 +85,22 @@ def _runs(flags):
     return out
 
 
-def grid_cells(a):
-    """짙은 초록 칸 구분선 사이의 칸 경계 [(시작, 끝)]"""
+def grid_cells(a, n_rows, n_cols):
+    """짙은 초록 칸 구분선 사이의 칸 경계 [(시작, 끝)]
+    선처럼 보이는 다른 것(짙은 옷 등)에 속지 않도록, 칸이 고르게 나뉘는 자리에 가장 가까운 선만 씁니다."""
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     line = (g > r + 30) & (g > b + 30) & (g < 170)
-    rows = _runs(line.mean(axis=1) > 0.5)
-    cols = _runs(line.mean(axis=0) > 0.5)
-    between = lambda ls: [(ls[i][1] + 3, ls[i + 1][0] - 3) for i in range(len(ls) - 1)]
-    return between(rows), between(cols)
+
+    def pick(runs, n, size):
+        lines = []
+        for k in range(n + 1):
+            want = k * size / n
+            lines.append(min(runs, key=lambda ln: abs((ln[0] + ln[1]) / 2 - want)) if runs else (int(want), int(want)))
+        return [(lines[i][1] + 3, lines[i + 1][0] - 3) for i in range(n)]
+
+    rows = pick(_runs(line.mean(axis=1) > 0.5), n_rows, a.shape[0])
+    cols = pick(_runs(line.mean(axis=0) > 0.5), n_cols, a.shape[1])
+    return rows, cols
 
 
 def key_out(c):
@@ -112,7 +125,8 @@ def key_out(c):
 def build(name):
     spec = SHEETS[name]
     src = np.array(Image.open(ROOT / "art_src" / "sheets" / f"{name}.webp").convert("RGB"))
-    rows, cols = grid_cells(src)
+    n_cols = max(sum(seg[1] for seg in segs) for segs in spec["rows"])
+    rows, cols = grid_cells(src, len(spec["rows"]), spec.get("cols", max(n_cols, 6)))
     frames = {}                       # (줄, 칸) -> RGBA 배열
     for ri, segs in enumerate(spec["rows"]):
         y0, y1 = rows[ri]

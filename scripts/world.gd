@@ -539,17 +539,15 @@ func _draw_wing(font: Font, f0: float, f1: float) -> void:
 		draw_rect(Rect2(1574, f1 - 70 + i * 7, 30 + (i * 17) % 40, 1), Color(0.9, 0.95, 0.9, 0.7))
 	draw_circle(Vector2(1644, f1 - 56), 6, Color(0.9, 0.95, 0.9, 0.7))
 	draw_circle(Vector2(1641, f1 - 56), 6, Color8(36, 72, 56))
-	var kid_cols := [Color8(220, 90, 90), Color8(90, 140, 220), Color8(240, 200, 90), Color8(120, 190, 120)]
+	var kids := SheetSprite.named("kids")
 	for k in 4:
-		var dx := 1690.0 + k * 34.0
-		draw_rect(Rect2(dx - 12, f1 - 20, 26, 3), Color8(150, 110, 80))       # 책상
-		draw_rect(Rect2(dx - 10, f1 - 17, 2, 17), Color8(90, 66, 50))
-		draw_rect(Rect2(dx + 10, f1 - 17, 2, 17), Color8(90, 66, 50))
-		draw_rect(Rect2(dx - 6, f1 - 28, 14, 8), kid_cols[k])               # 엎드린 몸
-		draw_circle(Vector2(dx + 6, f1 - 23), 4, Color8(240, 200, 170))     # 머리
-		draw_rect(Rect2(dx + 2, f1 - 28, 9, 3), Color8(60, 44, 40))          # 머리카락
+		var dx := 1672.0 + k * 42.0
+		# 숨쉬기 (1.2초마다 들숨·날숨), 사람마다 9초에 한 번씩 1.5초 동안 잠꼬대
+		var talk := fmod(_t + k * 2.3, 9.0) < 1.5
+		var fi := 2 if talk else int(_t / 1.2 + k) % 2
+		kids.draw(self, "kid%d" % (k + 1), fi, Vector2(dx, f1), false, CHAR_H)
 		var zt := fmod(_t * 0.6 + k * 0.37, 1.0)
-		draw_string(font, Vector2(dx + 8 + zt * 6, f1 - 30 - zt * 14), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(0.8, 0.85, 1.0, 1.0 - zt))
+		draw_string(font, Vector2(dx + 6 + zt * 6, f1 - 36 - zt * 14), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(0.8, 0.85, 1.0, 1.0 - zt))
 
 
 ## 유물이 든 유리 진열장
