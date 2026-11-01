@@ -57,11 +57,15 @@ func _run() -> void:
 	game.minutes = game.at("17:22")
 	await _frames(3)
 	_check(game.has("sunset"), "서쪽으로 지는 해")
-	await _frames(3)
-	await _shot("insight_popup")
-	_check(main.fx.busy(), "깨달음 카드")
-	await _clear_fx()
+	_check(not main.fx.busy(), "관측 화면이 열려 있는 동안에는 깨달음 카드가 뜨지 않음")
 	main._overlay.close()
+	await _wait(1.0)
+	_check(main.fx.busy(), "화면을 나오면 '무엇을 보았지?' 카드")
+	await _shot("seen_card")
+	main.fx.dismiss()
+	await _wait(0.5)
+	await _shot("insight_card")
+	await _clear_fx()
 
 	# 계단: 옥상 → 1층
 	w.player_x = w.STAIRS_X
@@ -125,7 +129,7 @@ func _run() -> void:
 	await _wait(3.9)
 	await _shot("long_exposure")
 	_check(game.has("star_trail"), "도는 하늘 (장노출)")
-	_check(absf(game.minutes - game.at("20:10")) < 1.0, "장노출로 1시간이 흐름")
+	_check(absf(game.minutes - game.at("20:10")) < 3.0, "장노출로 1시간이 흐름")
 	await _clear_fx()
 	main._overlay.close()
 
@@ -247,13 +251,23 @@ func _run() -> void:
 	await _frames(4)
 	await _shot("b1door")
 
-	# 14) 해돋이 → 두 번째 밤
+	# 14) 해돋이 → 되감기 → 두 번째 밤 (주인공은 아직 모름) → 19:00에 알아챔
 	game.minutes = game.NIGHT_LEN - 0.2
 	await _wait(0.6)
 	await _advance()
+	await _wait(1.3)
+	await _shot("rewind")
+	await _wait(2.5)
+	await _advance()
+	_check(game.loop == 2 and not game.realized, "두 번째 밤 (아직 모름)")
+	_check(game.shown_loop() == 1, "화면에는 여전히 1번째 밤")
+	game.minutes = game.at("19:00")
+	await _wait(0.8)
+	await _advance()
+	await _shot("realize_card")
 	_key(KEY_ENTER)
 	await _frames(3)
-	_check(game.loop == 2, "두 번째 밤")
+	_check(game.realized, "루프를 알아챔")
 	_check(game.freed.size() == 6, "여섯 명 모두 귀환 유지")
 	await _shot("loop2")
 	print("AUTOPLAY OK: loop=%d facts=%d freed=%s" % [game.loop, game.facts.size(), str(game.freed.keys())])

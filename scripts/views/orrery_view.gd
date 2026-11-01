@@ -105,10 +105,10 @@ func _record() -> void:
 	_status = ""
 	if _rec["tilt"].has(6) and _rec["tilt"].has(12) and _rec["flat"]:
 		if Game.add_fact("tilt_seasons"):
-			_status = "자전축이 기울면 여름엔 해가 높고 낮이 길고, 겨울엔 해가 낮고 낮이 짧다. 축을 세우면 계절이 없다! (관측 일지에 기록)"
+			_status = "6월엔 해가 높고 햇빛이 좁게 모인다. 12월엔 해가 낮고 햇빛이 넓게 퍼진다. 축을 세우면 1년 내내 똑같다. 무슨 뜻일까? (나가서 생각해 보자)"
 	if _rec["dist"].has(1) and _rec["dist"].has(7):
 		if Game.add_fact("perihelion"):
-			_status = "1월에 태양과 가장 가깝고 7월에 가장 멀다. 가장 가까운 1월이 한겨울이라니! (관측 일지에 기록)"
+			_status = "1월에 태양과 가장 가깝고, 7월에 가장 멀다. 1월은 우리나라의 한겨울인데… 무슨 뜻일까? (나가서 생각해 보자)"
 	queue_redraw()
 
 

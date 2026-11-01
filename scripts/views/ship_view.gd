@@ -68,7 +68,7 @@ func _process(delta: float) -> void:
 		if h > 2.0:
 			Game.night["ship_watch"] = Game.night.get("ship_watch", 0.0) + delta
 			if Game.night["ship_watch"] >= 1.0 and Game.add_fact("ship_horizon"):
-				_status = "쌍안경으로 크게 봐도 아래는 안 보인다. 멀어서 작아진 게 아니라, 아래부터 수평선 너머로 가려진 것이다! 바다 표면이 둥글다. (관측 일지에 기록)"
+				_status = "아래쪽 불빛은 사라지고 돛대 꼭대기 불빛만 남았다. 쌍안경으로 크게 봐도 아래는 보이지 않는다. 무슨 뜻일까? (나가서 생각해 보자)"
 	queue_redraw()
 
 

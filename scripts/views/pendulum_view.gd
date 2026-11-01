@@ -51,7 +51,7 @@ func record() -> void:
 	var diff := float(now["a"]) - float(older["a"])
 	var hours := (Game.minutes - float(older["m"])) / 60.0
 	if Game.add_fact("pendulum"):
-		_status = "%.1f시간 동안 흔들리는 방향이 시계 방향으로 약 %d도 돌았다! 진자는 그대로인데 그 아래 땅이 돈 것이다. (관측 일지에 기록)" % [hours, roundi(diff)]
+		_status = "%.1f시간 사이에 흔들리는 방향이 바닥 눈금에서 약 %d도 돌아가 있다. 아무도 건드리지 않았는데… 무슨 뜻일까? (나가서 생각해 보자)" % [hours, roundi(diff)]
 	else:
 		_status = "%.1f시간 동안 약 %d도 돌았다." % [hours, roundi(diff)]
 

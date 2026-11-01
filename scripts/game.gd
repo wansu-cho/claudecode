@@ -19,6 +19,8 @@ var facts := {}                   # 알아낸 사실 id -> true
 var freed := {}                   # 아침으로 돌아간 사람 id -> true
 var night := {}                   # 이번 밤에만 쓰는 기록
 var double_jump := false          # 나중에 퀘스트로 얻는 두 번 점프
+var realized := false             # 밤이 되풀이된다는 것을 주인공이 알아챘는지 (2번째 밤에 알아챔)
+var met := {}                     # 지난 밤들에 만난 적 있는 사람 (다시 만나면 데자뷔를 느낌)
 var _freeze := 0
 
 
@@ -85,8 +87,15 @@ func next_loop() -> void:
 	start_night()
 
 
+## 화면에 보여 주는 밤 번호: 주인공이 루프를 알아채기 전에는 늘 "1번째 밤"
+func shown_loop() -> int:
+	return loop if realized else 1
+
+
 func new_game() -> void:
 	loop = 1
+	realized = false
+	met = {}
 	facts = {}
 	freed = {}
 	double_jump = false
@@ -96,7 +105,7 @@ func new_game() -> void:
 func save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"loop": loop, "facts": facts.keys(), "freed": freed.keys(), "double_jump": double_jump}))
+		f.store_string(JSON.stringify({"loop": loop, "facts": facts.keys(), "freed": freed.keys(), "double_jump": double_jump, "realized": realized, "met": met.keys()}))
 
 
 func load_save() -> bool:
@@ -113,4 +122,8 @@ func load_save() -> bool:
 	for id in data.get("freed", []):
 		freed[id] = true
 	double_jump = bool(data.get("double_jump", false))
+	realized = bool(data.get("realized", loop >= 3))
+	met = {}
+	for id in data.get("met", []):
+		met[id] = true
 	return true

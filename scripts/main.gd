@@ -34,6 +34,7 @@ var overlay_layer: Control
 var _overlay: Control = null
 var _busy := false          # 대화나 이벤트가 진행 중
 var _ending := false
+var _free_t := 0.0          # 아무 화면도 열려 있지 않은 채로 지난 시간 (초)
 
 
 func _ready() -> void:
@@ -84,13 +85,18 @@ func _begin_night(first_of_session: bool) -> void:
 		await dialogue.say(Story.INTRO)
 		Game.add_fact("note")
 		Game.unfreeze()
+	elif not Game.realized:
+		# 두 번째 밤: 첫 밤과 똑같이 시작합니다. 주인공은 아직 모릅니다.
+		Game.freeze()
+		await dialogue.say(Story.INTRO + Story.DEJA_NIGHT2)
+		Game.unfreeze()
 	else:
 		var lines := ["12월 13일 17:00. 다시, 해 질 녘이다.", "관측 일지는 그대로 남아 있다."]
 		var hint := _hint()
 		if hint != "":
 			lines.append("")
 			lines.append("쪽지 뒷면에 글씨가 생겼다: \"" + hint + "\"")
-		var card := CardScript.new("%d번째 밤" % Game.loop, lines)
+		var card := CardScript.new("%d번째 밤" % Game.shown_loop(), lines)
 		add_child(card)
 		Game.freeze()
 		await card.done
@@ -127,8 +133,15 @@ func _hint() -> String:
 	return ""
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var can_move: bool = _overlay == null and not dialogue.visible and not _busy and not fx.busy()
+	# 관측 화면을 나온 뒤(대화도 없을 때)에야 깨달음 카드를 띄웁니다.
+	_free_t = _free_t + delta if can_move else 0.0
+	if can_move and Game.running and not Game.realized and Game.loop >= 2:
+		if Game.night.get("realize_now", false) or Game.minutes >= Game.at("19:00"):
+			_realize()
+	if _free_t > 0.6 and fx.has_pending() and Game.running:
+		fx.show_next()
 	world.active = can_move and Game.running
 	pad.enabled = world.active
 	hud.visible = _overlay == null
@@ -174,7 +187,9 @@ func _close_overlay() -> void:
 
 func open_journal() -> void:
 	if _overlay == null and not dialogue.visible:
-		_open(JournalScript.new(false))
+		var j := _open(JournalScript.new(false))
+		if not Game.realized:
+			j.tree_exited.connect(func(): Game.night["realize_now"] = true)
 
 
 func pick_evidence() -> Array:
@@ -304,6 +319,10 @@ func _talk(id: String) -> void:
 	if not Game.night.get(met_key, false):
 		Game.night[met_key] = true
 		await dialogue.say(info["wake"])
+		if Game.met.has(id):
+			await dialogue.say(info["deja"])
+			Game.night["realize_now"] = true
+		Game.met[id] = true
 		Game.add_fact(info["story"])
 	elif state == "late":
 		await dialogue.say(info["late"])
@@ -371,6 +390,28 @@ func _hearts(n: int) -> String:
 	return "♥".repeat(n) + "♡".repeat(TRUST_MAX - n)
 
 
+## 해돋이 → 17:00: 하늘과 시계가 거꾸로 빠르게 감깁니다.
+func _rewind() -> void:
+	var veil := ColorRect.new()
+	veil.color = Color(0.85, 0.9, 1.0, 0.0)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(veil)
+	var mark := Pal.label("◀◀", Pal.BIG, Pal.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	mark.position = Vector2(0, 150)
+	mark.size = Vector2(Pal.SCREEN.x, 30)
+	add_child(mark)
+	var tw := create_tween()
+	tw.tween_method(func(v: float): Game.minutes = v, Game.NIGHT_LEN, 0.0, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(veil, "color:a", 0.25, 2.2)
+	tw.tween_property(veil, "color:a", 1.0, 0.25)
+	await tw.finished
+	mark.queue_free()
+	var tw2 := create_tween()
+	tw2.tween_property(veil, "color:a", 0.0, 0.6)
+	tw2.tween_callback(veil.queue_free)
+
+
 func _check_prototype_end() -> void:
 	if Game.freed.size() >= Story.NPC.size():
 		await dialogue.say(Story.PROTOTYPE_END)
@@ -381,11 +422,41 @@ func _check_prototype_end() -> void:
 			await _begin_night(false)
 
 
+## 두 번째 밤에 주인공이 루프를 알아챕니다.
+func _realize() -> void:
+	_busy = true
+	Game.realized = true
+	Game.save()
+	var flash := ColorRect.new()
+	flash.color = Color(1, 1, 1, 0.0)
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(flash)
+	var tw := create_tween()
+	tw.tween_property(flash, "color:a", 0.8, 0.08)
+	tw.tween_property(flash, "color:a", 0.0, 0.5)
+	await tw.finished
+	flash.queue_free()
+	await dialogue.say(Story.REALIZE)
+	var lines: Array = Story.REALIZE_CARD.duplicate()
+	var hint := _hint()
+	if hint != "":
+		lines.append("")
+		lines.append("쪽지 뒷면에 글씨가 생겼다: \"" + hint + "\"")
+	var card := CardScript.new("%d번째 밤" % Game.loop, lines)
+	add_child(card)
+	Game.freeze()
+	await card.done
+	Game.unfreeze()
+	_busy = false
+
+
 func _end_night() -> void:
 	_busy = true
 	_close_overlay()
 	Game.running = false
-	await dialogue.say(Story.SUNRISE)
+	await dialogue.say(Story.SUNRISE if Game.realized else Story.SUNRISE_FIRST)
+	await _rewind()
 	Game.next_loop()
 	_busy = false
 	await _begin_night(false)

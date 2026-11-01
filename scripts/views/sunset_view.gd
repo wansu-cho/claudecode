@@ -56,7 +56,7 @@ func _process(_delta: float) -> void:
 		_watched = false
 		if _marks.size() >= MARKS_NEEDED:
 			if Game.add_fact("sunset"):
-				_status = "해가 오른쪽 아래로 비스듬히 내려가 바다 아래로 사라졌다. 해도 별들처럼 서쪽으로 진다! (관측 일지에 기록)"
+				_status = "해가 오른쪽 아래로 비스듬히, 조금씩 내려가 바다 아래로 사라졌다. 무슨 뜻일까? (나가서 생각해 보자)"
 			else:
 				_status = "해가 서쪽으로 비스듬히 졌다."
 		else:

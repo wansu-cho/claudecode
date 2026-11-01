@@ -128,7 +128,7 @@ func press(p: Vector2) -> void:
 
 func look_canopus() -> void:
 	if Game.add_fact("canopus"):
-		_status = "수평선 바로 위에 붉게 빛나는 별, 노인성(카노푸스)이다! 아테네나 서울처럼 더 북쪽에서는 볼 수 없는 별이다. (관측 일지에 기록)"
+		_status = "수평선 바로 위에 붉게 빛나는 별, 노인성(카노푸스)이다! 서울에서는 거의 볼 수 없다는 별인데… 무슨 뜻일까? (나가서 생각해 보자)"
 	else:
 		_status = "노인성(카노푸스). 이 섬처럼 남쪽에서만 보이는 별이다."
 
@@ -155,7 +155,7 @@ func take_photo() -> void:
 	if _photos.size() < PHOTOS_NEEDED:
 		_say("찰칵! %s, 그림자의 가장자리는 둥근 곡선이다. (사진 %d/%d)" % [Game.clock(m), _photos.size(), PHOTOS_NEEDED])
 	elif Game.add_fact("eclipse_round"):
-		_say("세 장 모두, 그림자가 달의 어느 부분을 지나든 가장자리가 둥근 곡선이다! (관측 일지에 기록)")
+		_say("세 장 모두, 달을 가린 그림자의 가장자리가 둥글게 휘어 있다. 무슨 뜻일까? (나가서 생각해 보자)")
 	else:
 		_say("찰칵! 이번에도 둥근 그림자다.")
 

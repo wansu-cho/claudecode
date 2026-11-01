@@ -57,7 +57,7 @@ func _ready() -> void:
 	_refresh_positions()
 	if Astro.hidden(Astro.star_altaz("dubhe", Game.minutes)) and Astro.star_altaz("navi", Game.minutes).x > 10.0:
 		if Game.add_fact("dipper_low"):
-			say("북두칠성이 북쪽 산 뒤에 숨어 있다… 대신 W자 모양 별자리가 높이 떠 있다. (관측 일지에 기록)")
+			say("북두칠성이 보이지 않는다. 북쪽 산 위로 W자 모양 별자리가 높이 떠 있다.")
 		else:
 			say("북두칠성은 아직 산 뒤에 숨어 있다. W자 별자리를 이용해 보자.")
 	else:
@@ -94,7 +94,7 @@ func _process(delta: float) -> void:
 			Game.unfreeze()
 			_exp_btn.disabled = false
 			if Game.add_fact("star_trail"):
-				say("1시간 동안 별들이 북극성 둘레로 원을 그리며 약 15도씩 돌았다. 북극성은 거의 점으로 찍혔다! (관측 일지에 기록)")
+				say("사진 속 별들이 모두 한 점을 가운데 두고 원을 그렸다. 가운데 별은 거의 점으로 찍혔다. 무슨 뜻일까? (나가서 생각해 보자)")
 			else:
 				say("별들이 북극성을 가운데 두고 둥글게 돌았다.")
 	_refresh_positions()
@@ -165,7 +165,7 @@ func _try_polaris() -> void:
 		return
 	var fact := "polaris_dip" if guide_kind == "dip" else "polaris_cas"
 	if Game.add_fact(fact):
-		say("찾았다! 길잡이 선이 가리키는 별, 북극성이다. 이쪽이 북쪽! (관측 일지에 기록)")
+		say("찾았다! 길잡이 선이 가리키는 별, 북극성이다. 이쪽이 북쪽!")
 	else:
 		say("북극성이다. 이 방법은 이미 일지에 적어 두었다.")
 	Game.night["polaris_seen"] = true

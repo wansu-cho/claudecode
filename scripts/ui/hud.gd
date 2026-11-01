@@ -44,7 +44,7 @@ func _draw() -> void:
 	draw_rect(r, Pal.LINE, false, 1.0)
 	# 보름달 아이콘 (월식이 있는 보름날 밤)
 	draw_circle(Vector2(18, 16), 5, Pal.GOLD)
-	draw_string(font, Vector2(28, 20), "%d번째 밤" % Game.loop, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
+	draw_string(font, Vector2(28, 20), "%d번째 밤" % Game.shown_loop(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
 	draw_string(font, Vector2(150, 20), Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	# 밤 진행 막대 (17:00 → 07:30), 분홍 점: 21:30 물때 (돌쇠가 떠날 수 있는 마지막 시각)
 	var bar := Rect2(12, 27, 188, 3)
