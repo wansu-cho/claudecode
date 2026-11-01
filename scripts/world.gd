@@ -3,7 +3,7 @@ extends Control
 ##
 ##   바깥 (1층 높이)   0 ~ 420 항구(돌쇠의 배) · 420 ~ 900 마당(벤치)
 ##   천문대 900 ~ 1540
-##     3층  옥상 관측 데크: 북쪽 하늘 망원경, 돔(남쪽 하늘 망원경, 관측 기록 보관함)
+##     3층  옥상 관측 데크: 서쪽 난간(해넘이), 북쪽 하늘 망원경, 돔(남쪽 하늘과 달을 보는 큰 망원경)
 ##     2층  전시실 '옛사람들의 하늘': 유물 6점 (등장인물이 깨어나는 곳)
 ##     1층  로비: 푸코 진자, 지구 공전 모형, 선생님 책상, 지하로 가는 문(잠김)
 ##     지하 1층  (잠김) 우주 주소 조각 7개를 모으면 열림
@@ -45,6 +45,7 @@ const SPOTS := [
 	{"id": "calendar", "floor": 1, "x": 1350.0, "label": "절기 농사 달력"},
 	{"id": "starmap", "floor": 1, "x": 1450.0, "label": "천상열차분야지도 (복각본)"},
 	{"id": "stairs", "floor": 2, "x": STAIRS_X, "label": "계단"},
+	{"id": "sunset", "floor": 2, "x": 1000.0, "label": "서쪽 하늘 바라보기 (해넘이)"},
 	{"id": "telescope", "floor": 2, "x": 1100.0, "label": "망원경으로 북쪽 하늘 보기"},
 	{"id": "dome", "floor": 2, "x": 1440.0, "label": "돔 안의 큰 망원경"},
 ]
@@ -58,6 +59,8 @@ const NPC_PLAN := {
 	"bori": {"home": "calendar", "wake": "19:00", "plan": [["19:00", Vector2(1125, 0)]]},
 	"hwi": {"home": "bamboo", "wake": "20:00", "plan": [["20:00", Vector2(1370, 2)]]},
 }
+## 돌쇠가 배를 띄울 수 있는 마지막 시각 (물때). 북두칠성의 국자 끝 두 별은 21:55에야 산 위로 올라옵니다.
+const TIDE_END := "21:30"
 const BOAT_X := 160.0
 const FERRY_X := 340.0             # 섬 연락선 (19:30 출항)
 
@@ -130,7 +133,7 @@ static func npc_state(id: String) -> String:
 	if id == "dolsoe":
 		if Game.minutes < Game.at("20:00"):
 			return "hall"
-		return "harbor" if Game.minutes < Game.at("23:00") else "late"
+		return "harbor" if Game.minutes < Game.at(TIDE_END) else "late"
 	return "awake"
 
 
@@ -453,6 +456,8 @@ func _draw_building() -> void:
 	draw_line(Vector2(tx, f2 - 26), Vector2(tx + 12, f2), Color8(60, 58, 90), 2)
 	draw_colored_polygon(PackedVector2Array([Vector2(tx - 18, f2 - 22), Vector2(tx + 16, f2 - 40), Vector2(tx + 19, f2 - 35), Vector2(tx - 15, f2 - 17)]), Color8(224, 226, 240))
 	draw_rect(Rect2(tx - 3, f2 - 29, 6, 4), Color8(80, 80, 120))
+	draw_rect(Rect2(988, f2 - 30, 24, 12), Color8(34, 30, 60))           # 서쪽 난간의 방위 표지판
+	draw_string(font, Vector2(990, f2 - 21), "← 서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	# 옥상으로 올라오는 계단 입구
 	draw_rect(Rect2(STAIRS_X - 14, f2 - 30, 28, 30), Color8(90, 92, 130))
 	draw_rect(Rect2(STAIRS_X - 10, f2 - 26, 20, 26), Color8(40, 36, 60))

@@ -19,6 +19,7 @@ const PendulumScript := preload("res://scripts/views/pendulum_view.gd")
 const DomeScript := preload("res://scripts/views/dome_view.gd")
 const ShipScript := preload("res://scripts/views/ship_view.gd")
 const OrreryScript := preload("res://scripts/views/orrery_view.gd")
+const SunsetScript := preload("res://scripts/views/sunset_view.gd")
 
 var world: Control
 var hud: Control
@@ -73,7 +74,7 @@ func _begin_night(first_of_session: bool) -> void:
 		Game.add_fact("note")
 		Game.unfreeze()
 	else:
-		var lines := ["12월 20일 17:30. 다시, 해 질 녘이다.", "관측 일지는 그대로 남아 있다."]
+		var lines := ["12월 13일 17:00. 다시, 해 질 녘이다.", "관측 일지는 그대로 남아 있다."]
 		var hint := _hint()
 		if hint != "":
 			lines.append("")
@@ -89,17 +90,11 @@ func _begin_night(first_of_session: bool) -> void:
 ## 아직 풀지 못한 것 중 첫 번째 힌트
 func _hint() -> String:
 	for h in Story.HINTS:
-		var id: String = h[0]
-		var todo := false
-		match id:
-			"polaris": todo = not Game.freed.has("dolsoe") and not (Game.has("polaris_cas") or Game.has("polaris_dip"))
-			"orrery": todo = not Game.freed.has("bori") and not (Game.has("perihelion") and Game.has("tilt_seasons"))
-			"ship_horizon": todo = not Game.freed.has("ina") and not Game.has(id)
-			"eclipse_round": todo = not Game.freed.has("hwi") and not Game.has(id)
-			"canopus": todo = not Game.freed.has("teo") and not Game.has(id)
-			_: todo = not Game.has(id)
-		if todo:
-			return h[1]
+		if Game.freed.has(h[1]):
+			continue
+		for id in h[0]:
+			if not Game.has(id):
+				return h[2]
 	return ""
 
 
@@ -171,6 +166,7 @@ func _on_interact(id: String) -> void:
 		"b1door": await _b1door()
 		"tablet", "bamboo", "vase", "calendar", "nut", "starmap": await _artifact(id)
 		"telescope": _open(SkyScript.new())
+		"sunset": _open(SunsetScript.new())
 		"dome": _open(DomeScript.new())
 		"binoculars": _open(ShipScript.new())
 		"orrery": _open(OrreryScript.new())
@@ -260,14 +256,11 @@ func _talk(id: String) -> void:
 		Game.night[met_key] = true
 		await dialogue.say(info["wake"])
 		Game.add_fact(info["story"])
-		if state == "hall":
-			return
 	elif state == "late":
 		await dialogue.say(info["late"])
 		return
 	elif state == "hall":
 		await dialogue.say(info["hall"])
-		return
 	else:
 		await dialogue.say(info["again"])
 	if state == "late":
@@ -286,29 +279,27 @@ func _talk(id: String) -> void:
 	var ids: Array = await pick_evidence()
 	if ids.is_empty():
 		return
-	var ok := false
-	if info.has("need_any"):
-		for f in info["need_any"]:
-			if f in ids:
-				ok = true
-	else:
-		ok = true
-		for f in info["need"]:
-			if f not in ids:
-				ok = false
-	if ok:
+	# 필요한 증거를 정확히 보여 줘야 합니다. 엉뚱한 증거가 섞이면 헷갈려서 실패합니다.
+	var need: Array = info["need"]
+	var extra := ids.filter(func(f): return f not in need)
+	var missing := need.filter(func(f): return f not in ids)
+	if extra.is_empty() and missing.is_empty():
 		await dialogue.say(info["win"])
 		if id == "dolsoe":
 			Game.night["sailing"] = true
 		Game.free_person(id)
 		await _check_prototype_end()
 		return
-	var partial: Dictionary = info.get("partial", {})
-	for f in ids:
-		if partial.has(f):
-			await dialogue.say(partial[f])
-			return
-	await dialogue.say(info["wrong"])
+	if not extra.is_empty():
+		var react: Dictionary = info.get("react", {})
+		if react.has(extra[0]):
+			await dialogue.say(react[extra[0]])
+		elif extra.size() < ids.size():
+			await dialogue.say(info["mixed"])
+		else:
+			await dialogue.say(info["wrong"])
+		return
+	await dialogue.say(info["partial"][ids[0]])
 
 
 func _check_prototype_end() -> void:

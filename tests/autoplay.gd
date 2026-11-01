@@ -31,6 +31,18 @@ func _run() -> void:
 	_check(game.has("note"), "쪽지 사실")
 	await _shot("roof_start")
 
+	# 0) 옥상 서쪽 난간: 해넘이 (17:08부터 해가 질 때까지 지켜보기)
+	game.minutes = game.at("17:08")
+	await _open("sunset")
+	for i in 6:
+		game.minutes += 2.0
+		await _frames(2)
+	await _shot("sunset")
+	game.minutes = game.at("17:22")
+	await _frames(3)
+	_check(game.has("sunset"), "서쪽으로 지는 해")
+	main._overlay.close()
+
 	# 계단: 옥상 → 1층
 	w.player_x = w.STAIRS_X
 	await _frames(2)
@@ -92,17 +104,6 @@ func _run() -> void:
 	_check(game.has("star_trail"), "도는 하늘")
 	main._overlay.close()
 
-	# 6) 돔: 관측 기록 보관함 (월식 사진 3장)
-	await _open("dome")
-	var dome: Node = main._overlay
-	dome._set_mode("archive")
-	for i in 3:
-		dome.view_photo(i)
-	await _frames(2)
-	await _shot("dome_archive")
-	_check(game.has("eclipse_round"), "언제나 둥근 그림자")
-	dome.close()
-
 	# 7) 부두 쌍안경: 연락선 (20:35)
 	game.minutes = game.at("20:35")
 	w.go_floor(0)
@@ -117,13 +118,17 @@ func _run() -> void:
 	# 8) 돌쇠 (항구, 21:00): 처음 만나면 이야기 → 증거
 	game.minutes = game.at("21:00")
 	w.npc["dolsoe"] = Vector2(260, 0)
-	await _persuade("dolsoe", ["polaris_cas"], "harbor")
+	await _persuade("dolsoe", ["polaris_cas"], "")
+	_check(not game.freed.has("dolsoe"), "돌쇠: 북극성만으로는 설득 안 됨")
+	await _persuade("dolsoe", ["polaris_cas", "ship_horizon"], "")
+	_check(not game.freed.has("dolsoe"), "돌쇠: 엉뚱한 증거가 섞이면 실패")
+	await _persuade("dolsoe", ["polaris_cas", "star_trail"], "harbor")
 	_check(game.freed.has("dolsoe"), "돌쇠 귀환")
 
 	# 9) 이나 (항구): 틀린 증거 한 번 → 맞는 증거
 	w.npc["ina"] = Vector2(110, 0)
-	await _persuade("ina", ["eclipse_round"], "")
-	_check(not game.freed.has("ina"), "이나: 월식만으로는 설득 안 됨")
+	await _persuade("ina", ["pendulum"], "")
+	_check(not game.freed.has("ina"), "이나: 진자로는 설득 안 됨")
 	await _persuade("ina", ["ship_horizon"], "ina")
 	_check(game.freed.has("ina"), "이나 귀환")
 
@@ -134,20 +139,41 @@ func _run() -> void:
 	await _persuade("bori", ["perihelion", "tilt_seasons"], "bori")
 	_check(game.freed.has("bori"), "보리 귀환")
 
-	# 11) 케티, 휘 (옥상, 21:30)
+	# 10-1) 돔: 개기월식을 부분식 때 20분 넘는 간격으로 세 번 찍기
 	game.minutes = game.at("21:30")
 	w.go_floor(2)
+	await _open("dome")
+	var dome: Node = main._overlay
+	dome._set_mode("moon")
+	dome.take_photo()
+	game.minutes = game.at("21:40")
+	dome.take_photo()                                # 너무 가까움: 기록 안 됨
+	game.minutes = game.at("21:55")
+	dome.take_photo()
+	game.minutes = game.at("22:16")
+	dome.take_photo()
+	await _frames(3)
+	await _shot("dome_moon_partial")
+	_check(game.has("eclipse_round"), "언제나 둥근 그림자")
+	game.minutes = game.at("23:00")
+	await _frames(3)
+	await _shot("dome_moon_total")
+	dome.close()
+
+	# 11) 케티, 휘 (옥상, 23:00)
 	w.npc["keti"] = Vector2(1240, 2)
 	w.npc["hwi"] = Vector2(1370, 2)
 	await _frames(3)
 	await _shot("roof_people")
-	await _persuade("keti", ["pendulum", "star_trail"], "keti")
+	await _persuade("keti", ["pendulum", "star_trail"], "")
+	_check(not game.freed.has("keti"), "케티: 해 증거 없이는 설득 안 됨")
+	await _persuade("keti", ["pendulum", "sunset"], "keti")
 	_check(game.freed.has("keti"), "케티 귀환")
 	await _persuade("hwi", ["eclipse_round"], "hwi")
 	_check(game.freed.has("hwi"), "휘 귀환")
 
-	# 12) 테오: 힌트 듣기 → 돔에서 노인성(01:00) → 증거
-	game.minutes = game.at("00:50")
+	# 12) 테오: 힌트 듣기 → 돔에서 노인성(01:20) → 증거
+	game.minutes = game.at("01:20")
 	w.npc["teo"] = Vector2(1300, 2)
 	w.player_x = 1300.0
 	await _frames(2)
@@ -160,7 +186,7 @@ func _run() -> void:
 	await _frames(3)
 	await _shot("dome_south")
 	dome = main._overlay
-	_check(dome.pos.has("canopus"), "노인성이 00:50에 보임")
+	_check(dome.pos.has("canopus"), "노인성이 01:20에 보임")
 	dome.press(dome.pos["canopus"])
 	_check(game.has("canopus"), "노인성 사실")
 	await _frames(2)

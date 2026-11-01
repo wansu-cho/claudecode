@@ -64,11 +64,11 @@ func _process(delta: float) -> void:
 	elif h < HULL_M:
 		_status = "배까지 약 %.0f km. 어? 선체 아래쪽이 수평선에 조금씩 가려지기 시작한다." % d
 	else:
-		_status = "배까지 약 %.0f km. 선체 불빛은 사라졌는데, 위쪽 불빛은 아직 보인다!" % d
+		_status = "배까지 약 %.0f km. 선체 불빛은 사라졌는데, 위쪽 불빛은 아직 보인다! 쌍안경으로 크게 봐도 아랫부분은 다시 보이지 않는다." % d
 		if h > 2.0:
 			Game.night["ship_watch"] = Game.night.get("ship_watch", 0.0) + delta
 			if Game.night["ship_watch"] >= 1.0 and Game.add_fact("ship_horizon"):
-				_status = "배가 작아지기만 한 게 아니라, 아래부터 수평선 너머로 가려졌다! 바다 표면이 둥글다. (관측 일지에 기록)"
+				_status = "쌍안경으로 크게 봐도 아래는 안 보인다. 멀어서 작아진 게 아니라, 아래부터 수평선 너머로 가려진 것이다! 바다 표면이 둥글다. (관측 일지에 기록)"
 	queue_redraw()
 
 

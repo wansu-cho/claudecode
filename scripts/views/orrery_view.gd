@@ -5,6 +5,7 @@ extends Control
 ##   한낮의 해 높이 = 90° − 위도 + 태양의 적위
 ##   낮의 길이 = 2 × arccos(−tan 위도 × tan 적위) ÷ 15° (+ 대기 굴절로 약 8분)
 ##   거리 = 1억 4,960만 km × (1 − 0.0167 × cos(근일점 1월 3일부터 지난 각도))
+##   햇빛이 퍼지는 넓이 = 1 ÷ sin(한낮의 해 높이)  → 해가 낮으면 같은 햇빛이 넓게 퍼져 땅이 덜 데워짐
 ## 알게 되는 것
 ##   tilt_seasons: 23.5°로 6월과 12월을 보고, 0°로도 한 번 보기
 ##   perihelion: 1월과 7월의 거리를 보기
@@ -166,14 +167,22 @@ func _draw() -> void:
 	]
 	for i in lines.size():
 		draw_string(font, Vector2(x, r.position.y + 20 + i * 18), lines[i][0], HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 20, Pal.SMALL, lines[i][1])
-	# 한낮의 해 높이 그림
-	var g := Vector2(x + 30, r.end.y - 18)
-	draw_line(g, g + Vector2(200, 0), Color8(120, 160, 110), 2)
-	draw_string(font, g + Vector2(-26, 4), "땅", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	var sun_dir := Vector2.from_angle(-deg_to_rad(noon_alt()))
-	draw_line(g + Vector2(100, 0), g + Vector2(100, 0) + sun_dir * 70.0, Color(1, 0.85, 0.4, 0.7), 1)
-	draw_circle(g + Vector2(100, 0) + sun_dir * 74.0, 6, Color8(255, 210, 100))
-	draw_arc(g + Vector2(100, 0), 22, -deg_to_rad(noon_alt()), 0, 12, Pal.GOLD, 1.0)
+	# 한낮의 햇빛: 같은 굵기의 햇빛 다발이 땅에 닿는 넓이 (해가 낮을수록 넓게 퍼짐)
+	var alt := noon_alt()
+	var spread := 1.0 / sin(deg_to_rad(alt))
+	var g := Vector2(x + 10, r.end.y - 30)
+	draw_line(g, g + Vector2(220, 0), Color8(120, 160, 110), 2)
+	var hit := g + Vector2(120, 0)
+	var beam := 22.0                                   # 햇빛 다발의 굵기 (픽셀)
+	var patch := beam * spread
+	var sun_dir := Vector2.from_angle(-deg_to_rad(alt))
+	draw_rect(Rect2(hit.x - patch / 2.0, g.y - 2, patch, 3), Color8(255, 200, 90))
+	for i in 5:
+		var gp := hit + Vector2(-patch / 2.0 + patch * i / 4.0, 0)
+		draw_line(gp, gp + sun_dir * 52.0, Color(1, 0.85, 0.4, 0.55), 1)
+	draw_circle(hit + sun_dir * 60.0, 6, Color8(255, 210, 100))
+	draw_string(font, Vector2(x, g.y - 62), "한낮의 햇빛 · 퍼지는 넓이 ×%.1f" % spread, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	draw_string(font, Vector2(x, g.y + 16), "땅 한 곳이 받는 햇빛: %d%%" % roundi(100.0 / spread), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 20, Pal.SMALL, Pal.GOLD)
 
 	var hint := "달을 바꾸고 자전축을 바꿔 보자. (← → 달, T 자전축)" if _status == "" else _status
 	var sr := Rect2(380, 252, 250, 72)

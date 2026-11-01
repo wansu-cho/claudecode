@@ -8,7 +8,7 @@ signal closed
 const CENTER := Vector2(320, 170)
 const R := 120.0
 const RATE := 8.39          # 도/시간 (북위 34°)
-const START_ANGLE := 24.0   # 17:30에 흔들리는 방향 (북쪽에서 시계 방향, 도)
+const START_ANGLE := 24.0   # 17:00에 흔들리는 방향 (북쪽에서 시계 방향, 도)
 
 var _status := ""
 var _t := 0.0

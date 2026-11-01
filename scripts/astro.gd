@@ -1,17 +1,39 @@
 class_name Astro
 ## 실제 하늘 계산입니다.
-## 무대: 북위 34°, 동경 127.5°의 남해 섬. 날짜: 2026년 12월 20일 밤.
-## 게임 시각(분, 17:30 = 0분)을 넣으면 별의 고도와 방위를 돌려줍니다.
+## 무대: 북위 34°, 동경 127.5°의 남해 섬.
+## 날짜: 2141년 12월 13일 밤. 개기월식이 있는 보름날입니다. (게임 안에서는 "2xxx년"으로만 보여 줍니다)
+##   2000~2999년 12월 중순에 우리나라에서 처음부터 끝까지 보이는 개기월식 중 하나입니다.
+##   월식 시각은 지구 자전이 느려지는 정도(ΔT, 약 5분)를 넣어 계산했습니다.
+## 게임 시각(분, 17:00 = 0분)을 넣으면 별의 고도와 방위를 돌려줍니다.
 
 const LAT := 34.0
 const LON := 127.5
-## 2026-12-20 08:30 UT(= 17:30 KST)의 그리니치 항성시(시)
-const GMST_AT_START := 14.42956240318017
+## 2141-12-13 08:00 UT(= 17:00 KST)의 그리니치 항성시(시)
+const GMST_AT_START := 13.478024704529867
 const SIDEREAL_RATE := 1.00273790935      # 항성시는 태양시보다 조금 빨리 흐릅니다
+## 별 목록은 2000년 기준 좌표입니다. 141.95년 동안의 세차운동(자전축이 팽이처럼 도는 것)을 보정합니다.
+const PREC_T := 1.4195                     # (2141.95 − 2000) ÷ 100년
 
-## 12월 20일 무렵 태양의 적경(시)과 적위(도)
-const SUN_RA := 17.95
-const SUN_DEC := -23.43
+## 12월 13일 무렵 태양의 적경(시)과 적위(도), 그날의 좌표
+const SUN_RA := 17.377
+const SUN_DEC := -23.14
+
+## 달: 보름달. 적경은 1시간에 약 0.046시간씩 늘어납니다. (그날의 좌표)
+const MOON_RA_MID := 5.395
+const MOON_RA_RATE := 0.0459
+const MOON_DEC := 22.99
+
+## 개기월식 (한국 시각)
+##   반영식 시작은 생략. 부분식 시작 21:22 → 개기식 22:20 ~ 23:52 (가장 깊을 때 23:06) → 부분식 끝 00:50
+## 달 중심에서 본 지구 본그림자 중심의 위치(각도 분, 동쪽 +, 북쪽 +), 23:06 기준으로 1분마다 변하는 양
+const ECL_MID := "23:06"
+const ECL_E0 := 0.4
+const ECL_E_RATE := -0.5925
+const ECL_N0 := 10.2
+const ECL_N_RATE := 0.0213
+const MOON_R := 16.70                     # 달의 반지름 (각도 분)
+const UMBRA_R := 45.83                    # 달 거리에서 지구 본그림자의 반지름 (각도 분)
+const PENUMBRA_R := 78.3                  # 반그림자의 반지름 (각도 분)
 
 ## 별 목록: 이름 -> [적경(시), 적위(도), 밝기(등급)]
 const STARS := {
@@ -56,8 +78,64 @@ static func altaz(ra_h: float, dec: float, game_min: float) -> Vector2:
 
 
 static func star_altaz(id: String, game_min: float) -> Vector2:
-	var s: Array = STARS[id]
-	return altaz(s[0], s[1], game_min)
+	var s: Vector2 = star_radec(id)
+	return altaz(s.x, s.y, game_min)
+
+
+static var _prec := {}
+
+## 세차운동을 보정한 그날의 적경(시)·적위(도)
+static func star_radec(id: String) -> Vector2:
+	if not _prec.has(id):
+		var s: Array = STARS[id]
+		_prec[id] = precess(s[0], s[1])
+	return _prec[id]
+
+
+## 2000년 좌표 → 그날의 좌표 (IAU 1976 세차 공식)
+static func precess(ra_h: float, dec: float) -> Vector2:
+	var t := PREC_T
+	var zeta := deg_to_rad((2306.2181 * t + 0.30188 * t * t + 0.017998 * t * t * t) / 3600.0)
+	var z := deg_to_rad((2306.2181 * t + 1.09468 * t * t + 0.018203 * t * t * t) / 3600.0)
+	var th := deg_to_rad((2004.3109 * t - 0.42665 * t * t - 0.041833 * t * t * t) / 3600.0)
+	var a := deg_to_rad(ra_h * 15.0) + zeta
+	var d := deg_to_rad(dec)
+	var x := cos(th) * cos(d) * cos(a) - sin(th) * sin(d)
+	var y := cos(d) * sin(a)
+	var zz := sin(th) * cos(d) * cos(a) + cos(th) * sin(d)
+	var ra2 := fposmod(rad_to_deg(atan2(y, x) + z) / 15.0, 24.0)
+	return Vector2(ra2, rad_to_deg(asin(clampf(zz, -1.0, 1.0))))
+
+
+## ---- 달과 월식 ----
+
+static func moon_altaz(game_min: float) -> Vector2:
+	var hours := (game_min - Game.at(ECL_MID)) / 60.0
+	return altaz(MOON_RA_MID + MOON_RA_RATE * hours, MOON_DEC, game_min)
+
+
+## 달 중심에서 본 본그림자 중심 (각도 분, x = 동쪽, y = 북쪽)
+static func shadow_offset(game_min: float) -> Vector2:
+	var dm := game_min - Game.at(ECL_MID)
+	return Vector2(ECL_E0 + ECL_E_RATE * dm, ECL_N0 + ECL_N_RATE * dm)
+
+
+## "none"(월식 아님) / "partial"(부분식: 그림자 가장자리가 달 위에 보임) / "total"(개기식)
+static func eclipse_phase(game_min: float) -> String:
+	var d := shadow_offset(game_min).length()
+	if d >= UMBRA_R + MOON_R:
+		return "none"
+	if d <= UMBRA_R - MOON_R:
+		return "total"
+	return "partial"
+
+
+## 달빛의 세기 (0 ~ 1). 달이 낮거나 그림자에 가려지면 약해집니다.
+static func moonlight(game_min: float) -> float:
+	var up := clampf(moon_altaz(game_min).x / 12.0, 0.0, 1.0)
+	var d := shadow_offset(game_min).length()
+	var covered := clampf((UMBRA_R + MOON_R - d) / (2.0 * MOON_R), 0.0, 1.0)
+	return up * (1.0 - 0.97 * covered)
 
 
 static func sun_alt(game_min: float) -> float:
@@ -81,7 +159,7 @@ static func hidden(altaz_v: Vector2) -> bool:
 static func field() -> Array:
 	if _field.is_empty():
 		var rng := RandomNumberGenerator.new()
-		rng.seed = 2026
+		rng.seed = 2141
 		for i in 420:
 			var ra := rng.randf() * 24.0
 			var dec := rad_to_deg(asin(rng.randf_range(-0.35, 1.0)))
