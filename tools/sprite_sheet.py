@@ -54,6 +54,11 @@ SHEETS = {
                  [["face", 5, 0, False]]],
         "height": 1.3,
     },
+    "teacher": {
+        "rows": [[["idle", 4, 4, True]], [["walk", 6, 8, True]],
+                 [["wave", 1, 0, True], ["give", 1, 0, True], ["skyward", 1, 0, True]], [["face", 5, 0, False]]],
+        "height": 1.35,
+    },
     "ina": {
         "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True], ["gaze", 1, 0, True]],
                  [["face", 5, 0, False]]],

@@ -585,8 +585,11 @@ func _draw_people() -> void:
 			Sprites.draw(self, Sprites.rows(id), Sprites.pal(id), feet, player_x < p.x, 1.0, OLD_PX)
 	if prologue:                                                    # 해를 등진 선생님 (얼굴이 안 보이는 실루엣)
 		var tf := Vector2(TEACHER_X, floor_y(0))
-		Sprites.draw_aura(self, Sprites.TEO, tf, Color(1.0, 0.75, 0.45, 0.9), OLD_PX * 1.15)
-		Sprites.draw(self, Sprites.TEO, Sprites.silhouette(Sprites.TEO_PAL), tf, player_x < TEACHER_X, 1.0, OLD_PX * 1.15)
+		var t_sp := SheetSprite.named("teacher")
+		var near := absf(player_x - TEACHER_X) < 90.0          # 가까이 오면 손을 흔듦
+		draw_circle(tf + Vector2(0, -CHAR_H * 0.65), CHAR_H * 0.8, Color(1.0, 0.72, 0.42, 0.22))
+		t_sp.draw(self, "wave" if near else "idle", 0 if near else t_sp.frame_at("idle", _t), tf, player_x < TEACHER_X,
+				CHAR_H, Color(0.16, 0.13, 0.22))                # 해를 등져 얼굴이 보이지 않는 실루엣
 	var on_pier := floor_i == 0 and player_x < 420
 	var ground_y := floor_y(floor_i) - (4 if on_pier else 0)
 	if y_off < 0.0:

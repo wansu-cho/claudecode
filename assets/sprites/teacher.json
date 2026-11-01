@@ -1,0 +1,61 @@
+{
+ "frame_w": 261,
+ "frame_h": 294,
+ "cols": 6,
+ "anchor": [
+  130,
+  273
+ ],
+ "body_h": 227,
+ "height": 1.35,
+ "anims": {
+  "idle": {
+   "frames": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "fps": 4
+  },
+  "walk": {
+   "frames": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "fps": 8
+  },
+  "wave": {
+   "frames": [
+    10
+   ],
+   "fps": 0
+  },
+  "give": {
+   "frames": [
+    11
+   ],
+   "fps": 0
+  },
+  "skyward": {
+   "frames": [
+    12
+   ],
+   "fps": 0
+  },
+  "face": {
+   "frames": [
+    13,
+    14,
+    15,
+    16,
+    17
+   ],
+   "fps": 0
+  }
+ }
+}
