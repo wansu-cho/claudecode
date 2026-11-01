@@ -5,7 +5,7 @@ class_name SheetSprite
 ## 원본 그림을 줄이지 않고 담아 두었다가, 화면 해상도에 맞춰 그립니다. (게임 좌표로 키 height칸)
 
 ## 대사창 얼굴 그림을 보여 줄 사람: 말하는 사람 이름 -> 시트 이름
-const SPEAKERS := {"케티": "keti", "테오": "teo", "이나": "ina"}
+const SPEAKERS := {"케티": "keti", "테오": "teo", "이나": "ina", "돌쇠": "dolsoe"}
 
 static var _cache := {}
 

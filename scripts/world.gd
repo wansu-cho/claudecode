@@ -32,7 +32,7 @@ const NPC_SPEED := 55.0
 const REACH := 24.0
 const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새 그림(시트)은 이 키로 그림
 const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
-const HD := {"keti": "keti", "teo": "teo", "ina": "ina"}   # 새 그림이 있는 사람 -> 시트 이름
+const HD := {"keti": "keti", "teo": "teo", "ina": "ina", "dolsoe": "dolsoe"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
 	{"id": "binoculars", "floor": 0, "x": 40.0, "label": "부두 쌍안경으로 바다 보기"},
@@ -359,7 +359,7 @@ func _draw_harbor() -> void:
 			draw_rect(Rect2(bx - 2, by - 62, 3, 52), Color8(80, 56, 40))
 			draw_colored_polygon(PackedVector2Array([Vector2(bx + 2, by - 60), Vector2(bx + 34, by - 20), Vector2(bx + 2, by - 18)]), Color8(220, 210, 186))
 			if Game.night.get("sailing", false):
-				Sprites.draw(self, Sprites.DOLSOE, Sprites.DOLSOE_PAL, Vector2(bx - 16, by - 12), false, 1.0, OLD_PX)
+				SheetSprite.named("dolsoe").draw(self, "point", 0, Vector2(bx - 16, by - 12), false, CHAR_H)   # 북극성을 가리키며 떠남
 
 
 func _draw_land() -> void:
