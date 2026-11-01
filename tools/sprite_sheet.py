@@ -22,16 +22,22 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 TARGET_H = 168           # 아이 캐릭터의 키 (원본 픽셀). 게임에서는 약 46칸 높이로 그립니다.
 PAD = 4
 
-## 시트마다: 줄별 [동작 이름, 칸 수, 초당 프레임, 발끝 맞춤 여부], 키 배율(아이 = 1.0)
+## 시트마다: 줄마다 [동작 이름, 칸 수, 초당 프레임, 발끝 맞춤 여부]의 목록 (한 줄에 동작 여러 개 가능)
+##   height: 키 배율 (아이 = 1.0, 테오는 형이라 1.15)
 SHEETS = {
     "hero": {
-        "rows": [["idle", 4, 4, True], ["walk", 6, 10, True], ["jump", 3, 0, True],
-                 ["look", 1, 0, True], ["scope", 1, 0, True], ["face", 5, 0, False]],
+        "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["jump", 3, 0, True]],
+                 [["look", 1, 0, True]], [["scope", 1, 0, True]], [["face", 5, 0, False]]],
         "height": 1.0,
     },
     "keti": {
-        "rows": [["idle", 4, 4, True], ["walk", 6, 10, True], ["wake", 4, 3, True], ["face", 5, 0, False]],
+        "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True]], [["face", 5, 0, False]]],
         "height": 1.0,
+    },
+    "teo": {
+        "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True], ["point", 1, 0, True]],
+                 [["face", 5, 0, False]]],
+        "height": 1.15,
     },
 }
 
@@ -83,9 +89,9 @@ def build(name):
     src = np.array(Image.open(ROOT / "art_src" / "sheets" / f"{name}.webp").convert("RGB"))
     rows, cols = grid_cells(src)
     frames = {}                       # (줄, 칸) -> RGBA 배열
-    for ri, (anim, count, _fps, _feet) in enumerate(spec["rows"]):
+    for ri, segs in enumerate(spec["rows"]):
         y0, y1 = rows[ri]
-        for k in range(count):
+        for k in range(sum(seg[1] for seg in segs)):
             x0, x1 = cols[k]
             frames[(ri, k)] = key_out(src[y0:y1, x0:x1])
 
@@ -96,19 +102,22 @@ def build(name):
 
     out_frames = []                   # [이미지, 발끝 y(축소 후), 가운데 x]
     anims = {}
-    for ri, (anim, count, fps, feet) in enumerate(spec["rows"]):
-        imgs = []
-        for k in range(count):
-            im = Image.fromarray(frames[(ri, k)], "RGBA")
-            im = im.resize((round(im.width * scale), round(im.height * scale)), Image.LANCZOS)
-            imgs.append(im)
-        bottoms = [np.where(np.array(im)[..., 3].any(axis=1) > 0)[0].max() for im in imgs]
-        base = max(bottoms) if feet else None
-        idx = []
-        for k, im in enumerate(imgs):
-            idx.append(len(out_frames))
-            out_frames.append([im, base if feet else bottoms[k], im.width / 2.0])
-        anims[anim] = {"frames": idx, "fps": fps}
+    for ri, segs in enumerate(spec["rows"]):
+        col = 0
+        for anim, count, fps, feet in segs:
+            imgs = []
+            for k in range(col, col + count):
+                im = Image.fromarray(frames[(ri, k)], "RGBA")
+                im = im.resize((round(im.width * scale), round(im.height * scale)), Image.LANCZOS)
+                imgs.append(im)
+            col += count
+            bottoms = [np.where(np.array(im)[..., 3].any(axis=1) > 0)[0].max() for im in imgs]
+            base = max(bottoms) if feet else None
+            idx = []
+            for k, im in enumerate(imgs):
+                idx.append(len(out_frames))
+                out_frames.append([im, base if feet else bottoms[k], im.width / 2.0])
+            anims[anim] = {"frames": idx, "fps": fps}
 
     # 모든 칸을 같은 크기로: 발끝(앵커)을 같은 자리에
     above = max(f[1] for f in out_frames) + PAD
@@ -129,6 +138,7 @@ def build(name):
         "frame_w": fw, "frame_h": fh, "cols": cols_n,
         "anchor": [round(half), round(above)],      # 칸 안에서 발끝 가운데 위치
         "body_h": round(TARGET_H * spec["height"]),
+        "height": spec["height"],                   # 아이 키를 1로 했을 때 이 사람의 키
         "anims": anims,
     }
     (out_dir / f"{name}.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")

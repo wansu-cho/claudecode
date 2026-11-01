@@ -23,7 +23,7 @@ const SunsetScript := preload("res://scripts/views/sunset_view.gd")
 const FactFxScript := preload("res://scripts/ui/fact_fx.gd")
 const BookScript := preload("res://scripts/views/book_view.gd")
 const BoardScript := preload("res://scripts/views/blackboard_view.gd")
-## 손님 표정 칸 순서 (시트의 face 줄): 기본, 걱정, 고집, 놀람, 깨달음
+## 손님 표정 칸 순서 (시트의 face 줄): 기본, 걱정(테오는 생각), 고집(테오는 아쉬움), 놀람, 깨달음
 const FACE_WORRY := 1
 const FACE_STUBBORN := 2
 const FACE_SURPRISED := 3
@@ -350,6 +350,7 @@ func _talk(id: String) -> void:
 	var pick: int = await dialogue.choose(options)
 	if options[pick] == "힌트를 듣는다":
 		var hint := _hint()
+		dialogue.face = FACE_WORRY                   # 테오: 턱을 괴고 생각하는 얼굴
 		await dialogue.say([[info["name"], hint if hint != "" else "이제 내가 알려 줄 건 없어. 정말 대단해!"]])
 		return
 	if pick != 0:

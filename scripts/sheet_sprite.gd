@@ -5,7 +5,7 @@ class_name SheetSprite
 ## 원본 그림을 줄이지 않고 담아 두었다가, 화면 해상도에 맞춰 그립니다. (게임 좌표로 키 height칸)
 
 ## 대사창 얼굴 그림을 보여 줄 사람: 말하는 사람 이름 -> 시트 이름
-const SPEAKERS := {"케티": "keti"}
+const SPEAKERS := {"케티": "keti", "테오": "teo"}
 
 static var _cache := {}
 
@@ -49,9 +49,9 @@ func region(anim: String, i: int) -> Rect2:
 	return Rect2((idx % cols) * fw, (idx / cols) * fh, fw, fh)
 
 
-## feet: 발끝 가운데 (게임 좌표), height: 몸의 키 (게임 좌표)
+## feet: 발끝 가운데 (게임 좌표), height: 아이 캐릭터의 키 (게임 좌표). 키가 큰 사람은 시트의 height 배율만큼 크게
 func draw(ci: CanvasItem, anim: String, i: int, feet: Vector2, flip: bool, height: float, tint := Color.WHITE) -> void:
-	var k: float = height / float(meta["body_h"])
+	var k: float = height * float(meta.get("height", 1.0)) / float(meta["body_h"])
 	var size := Vector2(meta["frame_w"], meta["frame_h"]) * k
 	var ax: float = meta["anchor"][0] * k
 	var ay: float = meta["anchor"][1] * k
