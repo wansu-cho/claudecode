@@ -46,6 +46,8 @@ const DOOR_RING := Vector2(6.1, 36.8)
 const BACKGROUNDS := {
 	"office": Rect2(40, 88, 260, 110),
 }
+## 사무실 벽시계: 배경 그림 속 시계 자리 (방 왼쪽 위에서의 위치, 반지름) — 바늘은 게임 시각에 맞춰 그림
+const OFFICE_CLOCK := Vector3(130.8, 23.6, 5.6)
 const HD := {"keti": "keti", "teo": "teo", "ina": "ina", "dolsoe": "dolsoe", "bori": "bori", "hwi": "hwi"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
@@ -493,6 +495,25 @@ func _draw_backgrounds() -> void:
 		for i in 6:                                                    # 창밖의 별 몇 개
 			draw_rect(Rect2(r.position + Vector2((i * 37) % int(r.size.x), (i * 23) % 40 + 8), Vector2.ONE), Color(1, 1, 1, 0.7 * dark))
 		draw_texture_rect(_bg_tex[name], r, false)
+		if name == "office":
+			_draw_clock(r.position + Vector2(OFFICE_CLOCK.x, OFFICE_CLOCK.y), OFFICE_CLOCK.z)
+
+
+## 진짜로 가는 벽시계: 그림 속 시계 판을 덮고 눈금과 바늘을 지금 게임 시각으로 그립니다.
+## (해가 뜨며 시간이 되감길 때는 바늘도 거꾸로 돕니다)
+func _draw_clock(c: Vector2, rad: float) -> void:
+	var ink := Color8(48, 22, 20)
+	draw_circle(c, rad - 0.4, Color8(238, 198, 154))
+	for i in 12:
+		var dir := Vector2.from_angle(TAU * i / 12.0 - PI / 2.0)
+		var inner := rad - (1.6 if i % 3 == 0 else 1.0)
+		draw_line(c + dir * inner, c + dir * (rad - 0.5), ink, 0.5 if i % 3 else 0.7)
+	var total := fposmod(Game.START_CLOCK + Game.minutes, 24.0 * 60.0)
+	var minute := fmod(total, 60.0)
+	var hour := fmod(total / 60.0, 12.0)
+	draw_line(c, c + Vector2.from_angle(TAU * minute / 60.0 - PI / 2.0) * (rad * 0.78), ink, 0.5)
+	draw_line(c, c + Vector2.from_angle(TAU * hour / 12.0 - PI / 2.0) * (rad * 0.5), ink, 0.8)
+	draw_circle(c, 0.6, Color8(150, 60, 40))
 
 
 func _has_bg(x: float, floor_line: float) -> bool:
