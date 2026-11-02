@@ -52,8 +52,9 @@ const BACKGROUNDS := {
 }
 ## 바깥 그림 배경: 이름 -> 게임 속 자리 (마당 흙길, 부두 마루가 1층 바닥 높이에 오게)
 const OUTDOOR := {
-	"yard": Rect2(720, 193, 260, 170),
+	"yard": Rect2(720, 193, 260, 113.6),
 	"harbor": Rect2(980, 208, 340, 170),
+	"seawall": Rect2(920, 297, 60, 120),
 	"roof_dome": Rect2(312.7, -3.8, 136.4, 77.8),      # 계단 출구(가운데 330)와 돔(가운데 402)
 }
 const ROOF_TILE := Rect2(0, -16.4, 256, 110)            # 옥상 바닥·난간 한 조각 (x는 이어 붙이며 정함)
@@ -63,6 +64,9 @@ const EXTERIOR := {
 	"ext_center": Rect2(300, 80, 160, 220),
 	"ext_right": Rect2(460, 80, 260, 220),
 }
+const GROUND_TILE := Vector2(258.2, 90.2)     # 땅 단면 한 조각 (가로, 세로)
+const GROUND_UP := 3.0                       # 땅 조각 맨 위가 발 높이보다 이만큼 위 (풀 끝)
+const SEAWALL_W := 60.0                      # 마당 끝 바닷가 돌 축대 너비
 const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
@@ -401,6 +405,17 @@ func _draw_sea(m: float, hy: float) -> void:
 func _draw_land() -> void:
 	var g: float = FLOOR_Y[0]
 	draw_rect(Rect2(0, g, YARD_X1, 220), SOIL)
+	if not _bg_tex.has("ground"):
+		_bg_tex["ground"] = load("res://assets/backgrounds/ground.png")
+	var tex: Texture2D = _bg_tex["ground"]
+	var end := YARD_X1 - SEAWALL_W
+	var x := 0.0
+	while x < end:                                                      # 땅 단면 조각을 축대까지 이어 붙임
+		var w := minf(GROUND_TILE.x, end - x)
+		draw_texture_rect_region(tex, Rect2(x, g - GROUND_UP, w, GROUND_TILE.y),
+				Rect2(0, 0, tex.get_width() * w / GROUND_TILE.x, tex.get_height()), _night_tint())
+		x += w
+	_draw_outdoor("seawall")
 	_draw_outdoor("yard")
 	_prop("bench", Vector2(878, g))
 
@@ -414,11 +429,16 @@ func _draw_exterior() -> void:
 		draw_texture_rect(_bg_tex[name], EXTERIOR[name], false, Color(1, 1, 1, ext_alpha))
 
 
+## 바깥(땅, 마당, 부두)은 밤이 깊을수록 어둡고 푸르스름하게
+func _night_tint() -> Color:
+	return Color.WHITE.lerp(Color(0.5, 0.48, 0.66), Astro.darkness(Game.minutes))
+
+
 ## 바깥 그림 배경 하나 그리기
 func _draw_outdoor(name: String) -> void:
 	if not _bg_tex.has(name):
 		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
-	draw_texture_rect(_bg_tex[name], OUTDOOR[name], false)
+	draw_texture_rect(_bg_tex[name], OUTDOOR[name], false, Color.WHITE if name == "roof_dome" else _night_tint())
 
 
 ## 항구: 부두, 연락선, 쌍안경, 돌쇠의 배
@@ -450,12 +470,7 @@ func _draw_building() -> void:
 	var f1: float = FLOOR_Y[1]
 	var f2: float = FLOOR_Y[2]
 
-	# 지하 1층 (잠김): 어두운 방과 둥근 문
-	draw_rect(Rect2(B_X0, f0 + 10, B_X1 - B_X0, B1_Y - f0), Color8(18, 14, 26))
-	draw_string(font, Vector2(B_X0 + 20, f0 + 30), "지하 1층 · 별지기의 방 (잠김)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color(Pal.DIM, 0.7))
-	var vault := Vector2(380, f0 + 50)
-	draw_circle(vault, 22, Color8(60, 54, 70))
-	draw_arc(vault, 22, 0, TAU, 32, Color(1, 0.84, 0.4, 0.35 + 0.15 * sin(_t * 1.5)), 2.0)
+	# 지하 1층(별지기의 방)은 숨겨 둡니다. 책방 비밀 책장이 열리면 따로 보여 줌
 
 	# 바깥벽 (방 안은 모두 그림 배경)
 	draw_rect(Rect2(B_X0, f2, B_X1 - B_X0, f0 - f2), wall)
@@ -463,7 +478,6 @@ func _draw_building() -> void:
 	# 바닥판: 2층은 양쪽 방만 (가운데 홀은 그림 속 다리)
 	draw_rect(Rect2(B_X0, f1, HALL_X0 - B_X0 + 4, 10), slab)
 	draw_rect(Rect2(HALL_X1 - 4, f1, B_X1 - HALL_X1 + 4, 10), slab)
-	draw_rect(Rect2(B_X0, f0, B_X1 - B_X0, 10), Color8(110, 92, 110))
 
 	_draw_storage(f0)
 	_draw_hall(f0, f2)
