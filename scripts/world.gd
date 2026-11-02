@@ -57,6 +57,12 @@ const OUTDOOR := {
 	"roof_dome": Rect2(312.7, -3.8, 136.4, 77.8),      # 계단 출구(가운데 330)와 돔(가운데 402)
 }
 const ROOF_TILE := Rect2(0, -16.4, 256, 110)            # 옥상 바닥·난간 한 조각 (x는 이어 붙이며 정함)
+## 천문대 외벽: 플레이어가 건물 밖에 있으면 보이고, 안으로 들어가면 서서히 투명해져 방 안이 보입니다
+const EXTERIOR := {
+	"ext_left": Rect2(40, 80, 260, 220),
+	"ext_center": Rect2(300, 80, 160, 220),
+	"ext_right": Rect2(460, 80, 260, 220),
+}
 const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
@@ -120,6 +126,7 @@ var prompt_rect := Rect2()        # 화면에 보이는 [확인] 말풍선 (누�
 var nearest := ""
 var npc := {}                     # 등장인물 id -> 지금 위치 (x, 층)
 var boat_x := BOAT_X
+var ext_alpha := 1.0                 # 외벽 불투명도 (밖 1 → 안 0)
 var has_lantern := true              # 프롤로그에서 선생님이 손전등을 건네기 전에는 false
 var cam := Vector2.ZERO
 var land_t := 9.0                 # 착지한 뒤 지난 시간 (착지 자세를 잠깐 보여 줌)
@@ -272,6 +279,8 @@ func _process(delta: float) -> void:
 	if Game.night.get("sailing", false):
 		boat_x += 28.0 * delta
 
+	var outside := floor_i == 0 and player_x > B_X1 - 4.0
+	ext_alpha = move_toward(ext_alpha, 1.0 if outside else 0.0, delta * 2.5)
 	nearest = _find_nearest()
 	var target := _cam_target()
 	cam.x = target.x
@@ -285,6 +294,7 @@ func _cam_target() -> Vector2:
 
 func _snap_camera() -> void:
 	cam = _cam_target()
+	ext_alpha = 1.0 if floor_i == 0 and player_x > B_X1 - 4.0 else 0.0
 
 
 ## 점프 (두 번 점프는 Game.double_jump를 얻으면 가능)
@@ -393,6 +403,15 @@ func _draw_land() -> void:
 	draw_rect(Rect2(0, g, YARD_X1, 220), SOIL)
 	_draw_outdoor("yard")
 	_prop("bench", Vector2(878, g))
+
+
+func _draw_exterior() -> void:
+	if ext_alpha <= 0.0:
+		return
+	for name in EXTERIOR:
+		if not _bg_tex.has(name):
+			_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
+		draw_texture_rect(_bg_tex[name], EXTERIOR[name], false, Color(1, 1, 1, ext_alpha))
 
 
 ## 바깥 그림 배경 하나 그리기
@@ -607,6 +626,7 @@ func _draw_people() -> void:
 		var near := absf(player_x - TEACHER_X) < 90.0          # 가까이 오면 손을 흔듦
 		t_sp.draw(self, "wave" if near else "idle", 0 if near else t_sp.frame_at("idle", _t), tf, player_x < TEACHER_X,
 				CHAR_H, Color(0.16, 0.13, 0.22))                # 해를 등져 얼굴이 보이지 않는 실루엣
+	_draw_exterior()                                                # 밖에서는 외벽이 건물 안(방, 사람)을 가림
 	var gy := ground_y(floor_i, player_x) - (4 if floor_i == 0 and _on_pier() else 0)
 	if y_off < 0.0:
 		var w := 16.0 * (1.0 + y_off / 80.0)
