@@ -54,7 +54,9 @@ const BACKGROUNDS := {
 const OUTDOOR := {
 	"yard": Rect2(720, 193, 260, 170),
 	"harbor": Rect2(980, 208, 340, 170),
+	"roof_dome": Rect2(312.7, -3.8, 136.4, 77.8),      # 계단 출구(가운데 330)와 돔(가운데 402)
 }
+const ROOF_TILE := Rect2(0, -16.4, 256, 110)            # 옥상 바닥·난간 한 조각 (x는 이어 붙이며 정함)
 const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
@@ -448,7 +450,6 @@ func _draw_building() -> void:
 	# 바닥판: 2층은 양쪽 방만 (가운데 홀은 그림 속 다리)
 	draw_rect(Rect2(B_X0, f1, HALL_X0 - B_X0 + 4, 10), slab)
 	draw_rect(Rect2(HALL_X1 - 4, f1, B_X1 - HALL_X1 + 4, 10), slab)
-	draw_rect(Rect2(B_X0, f2, B_X1 - B_X0, 10), slab)               # 옥상 바닥
 	draw_rect(Rect2(B_X0, f0, B_X1 - B_X0, 10), Color8(110, 92, 110))
 
 	_draw_storage(f0)
@@ -579,20 +580,19 @@ func _draw_lecture(font: Font, f1: float) -> void:
 
 ## 3층 옥상: 난간, 서쪽 표지판, 망원경, 홀 위의 돔, 계단 출구
 func _draw_roof(font: Font, f2: float) -> void:
-	for x in range(int(B_X0), int(B_X1), 14):
-		draw_rect(Rect2(x, f2 - 16, 2, 16), Color8(150, 154, 190))
-	draw_rect(Rect2(B_X0, f2 - 18, B_X1 - B_X0, 2), Color8(170, 174, 206))
-	var dome := PackedVector2Array()
-	for i in 25:
-		dome.append(Vector2(DOME_X, f2) + Vector2.from_angle(PI + PI * i / 24.0) * 58.0)
-	draw_colored_polygon(dome, Color8(170, 174, 206))
-	draw_rect(Rect2(DOME_X - 8, f2 - 58, 16, 58), Color8(60, 40, 40))
-	draw_rect(Rect2(DOME_X - 6, f2 - 54, 12, 54), Color8(255, 196, 120))
+	if not _bg_tex.has("roof"):
+		_bg_tex["roof"] = load("res://assets/backgrounds/roof.png")
+	var tex: Texture2D = _bg_tex["roof"]
+	var x := B_X0
+	while x < B_X1:                                                     # 바닥·난간 조각을 옆으로 이어 붙임
+		var w := minf(ROOF_TILE.size.x, B_X1 - x)
+		var src := Rect2(0, 0, tex.get_width() * w / ROOF_TILE.size.x, tex.get_height())
+		draw_texture_rect_region(tex, Rect2(x, ROOF_TILE.position.y, w, ROOF_TILE.size.y), src)
+		x += w
+	_draw_outdoor("roof_dome")
 	draw_rect(Rect2(58, f2 - 30, 24, 12), Color8(34, 30, 60))           # 서쪽 난간의 방위 표지판
 	draw_string(font, Vector2(60, f2 - 21), "← 서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	_prop("telescope", Vector2(180, f2))                                # 북쪽 하늘 망원경
-	draw_rect(Rect2(STAIRS_X - 14, f2 - 30, 28, 30), Color8(90, 92, 130))   # 나선 계단 출구
-	draw_rect(Rect2(STAIRS_X - 10, f2 - 26, 20, 26), Color8(40, 36, 60))
 
 
 ## 관측 장치·소품 그림 (props 시트). feet: 바닥 가운데

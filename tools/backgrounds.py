@@ -25,6 +25,13 @@ SIZES = {
     "hall": (160, 220),
     "yard": (260, 170),
     "harbor": (340, 170),
+    "roof": (256, 110),          # 옥상 바닥·난간 (옆으로 이어 붙임)
+    "roof_dome": (136.4, 77.8),  # 계단 출구 + 돔
+}
+## 원본에서 잘라 쓸 부분 (왼쪽, 위, 오른쪽, 아래) — 옥상은 난간 기둥 가운데에서 잘라야 이음매가 맞음
+CROPS = {
+    "roof": (10, 0, 1418, 605),
+    "roof_dome": (625, 520, 1375, 948),
 }
 
 
@@ -37,6 +44,8 @@ def build(name):
     spill = (g > np.maximum(r, b) + 15) & ~green          # 초록이 번진 가장자리
     a[..., 1] = np.where(spill, np.maximum(r, b) + 15, g)
     img = Image.fromarray(np.dstack([np.clip(a, 0, 255), alpha]).astype(np.uint8), "RGBA")
+    if name in CROPS:
+        img = img.crop(CROPS[name])
     w, h = SIZES[name]
     img = img.resize((round(w * PX_PER_UNIT), round(h * PX_PER_UNIT)), Image.LANCZOS)
     out = ROOT / "assets" / "backgrounds" / f"{name}.png"
