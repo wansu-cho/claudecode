@@ -555,8 +555,6 @@ func _draw_roof(font: Font, f2: float) -> void:
 		draw_texture_rect_region(tex, Rect2(x, ROOF_TILE.position.y, w, ROOF_TILE.size.y), src)
 		x += w
 	_draw_outdoor("roof_dome")
-	_prop2("sign", Vector2(70, f2))                                       # 서쪽 방위 표지판
-	draw_string(font, Vector2(64, f2 - 16), "서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color8(255, 240, 200))
 	_prop("telescope", Vector2(180, f2))                                # 북쪽 하늘 망원경
 
 
@@ -571,9 +569,19 @@ func _prop2(name: String, feet: Vector2, guest := "", sheet := "props2") -> void
 	SheetSprite.named(sheet).draw(self, n, 0, feet, false, CHAR_H)
 
 
+## 손님의 이야기를 풀어 준 물건: 둘레에 작은 금빛 별이 번갈아 반짝입니다 (네모 테두리 대신)
 func _glow_if_freed(id: String, r: Rect2) -> void:
-	if Game.freed.has(id):
-		draw_rect(r, Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0)), false, 2.0)
+	if not Game.freed.has(id):
+		return
+	for i in 4:
+		var ph := fmod(_t * 0.7 + i * 0.25 + id.length() * 0.13, 1.0)   # 별마다 0→1 한 번 반짝
+		var a := sin(ph * PI)
+		var q := Vector2(r.position.x + r.size.x * fposmod(0.15 + i * 0.29 + id.length() * 0.07, 1.0),
+				r.position.y + r.size.y * fposmod(0.2 + i * 0.37, 1.0))
+		var k := 1.0 + 2.0 * a
+		var c := Color(1, 0.9, 0.55, a)
+		draw_line(q - Vector2(k, 0), q + Vector2(k, 0), c, 0.6)
+		draw_line(q - Vector2(0, k), q + Vector2(0, k), c, 0.6)
 
 
 func _draw_people() -> void:
@@ -595,7 +603,6 @@ func _draw_people() -> void:
 		var tf := Vector2(TEACHER_X, floor_y(0))
 		var t_sp := SheetSprite.named("teacher")
 		var near := absf(player_x - TEACHER_X) < 90.0          # 가까이 오면 손을 흔듦
-		draw_circle(tf + Vector2(0, -CHAR_H * 0.65), CHAR_H * 0.8, Color(1.0, 0.72, 0.42, 0.22))
 		t_sp.draw(self, "wave" if near else "idle", 0 if near else t_sp.frame_at("idle", _t), tf, player_x < TEACHER_X,
 				CHAR_H, Color(0.16, 0.13, 0.22))                # 해를 등져 얼굴이 보이지 않는 실루엣
 	var gy := ground_y(floor_i, player_x) - (4 if floor_i == 0 and _on_pier() else 0)
@@ -616,16 +623,12 @@ func _draw_people() -> void:
 		anim = "walk"
 		fi = hero.frame_at("walk", walk_t)
 	hero.draw(self, anim, fi, feet, facing < 0, CHAR_H)
-	# 빨간 랜턴 불빛 (앞쪽 손 아래)
-	var light := feet + Vector2(10 * (1 if facing > 0 else -1), -9)
-	draw_circle(light, 10, Color(1, 0.25, 0.2, 0.16))
 
 
 ## 새 그림이 있는 사람: 깨어날 때는 깨어나는 동작, 걸을 때는 걷기, 서 있으면 대기
 func _draw_hd_npc(id: String, feet: Vector2, flip: bool) -> void:
 	var sp := SheetSprite.named(HD[id])
 	var seen: float = _npc_seen.get(id, 99.0)
-	draw_circle(feet + Vector2(0, -CHAR_H * 0.5), CHAR_H * 0.62, Color(0.5, 0.92, 0.97, 0.10))
 	if sp.has_anim("wake") and seen < 2.4:
 		sp.draw(self, "wake", int(seen / 0.6), feet, flip, CHAR_H)
 	elif _npc_moving.get(id, false):

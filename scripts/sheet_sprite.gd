@@ -57,8 +57,8 @@ func draw(ci: CanvasItem, anim: String, i: int, feet: Vector2, flip: bool, heigh
 	var ay: float = meta["anchor"][1] * k
 	var pos := Vector2(feet.x - (size.x - ax if flip else ax), feet.y - ay)
 	var rect := Rect2(pos, size)
-	if flip:
-		rect = Rect2(pos + Vector2(size.x, 0), Vector2(-size.x, size.y))
+	if flip:                # 너비를 음수로 주면 같은 자리에서 좌우가 뒤집혀 그려집니다 (자리는 그대로)
+		rect = Rect2(pos, Vector2(-size.x, size.y))
 	ci.draw_texture_rect_region(tex, rect, region(anim, i), tint)
 
 

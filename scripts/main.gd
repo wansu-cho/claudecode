@@ -71,7 +71,7 @@ func _title() -> void:
 	Game.running = false
 	var has_save := Game.load_save()
 	var buttons := ["이어 하기", "처음부터"] if has_save else ["시작하기"]
-	var card := CardScript.new(Story.TITLE, ["어린이천문대 겨울 별 캠프, 끝나지 않는 밤", "", "시제품 (그림은 임시)"], buttons)
+	var card := CardScript.new(Story.TITLE, ["어린이천문대 겨울 캠프, 끝나지 않는 밤", "", "시제품 (그림은 임시)"], buttons)
 	add_child(card)
 	var pick: int = await card.done
 	if not has_save or pick == 1:
