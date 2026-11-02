@@ -50,6 +50,12 @@ const BACKGROUNDS := {
 	"bookshop": Rect2(460, 198, 260, 110),
 	"hall": Rect2(300, 88, 160, 220),
 }
+## 바깥 그림 배경: 이름 -> 게임 속 자리 (마당 흙길, 부두 마루가 1층 바닥 높이에 오게)
+const OUTDOOR := {
+	"yard": Rect2(720, 193, 260, 170),
+	"harbor": Rect2(980, 208, 340, 170),
+}
+const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
 const WORKBENCH_UP := 50.0          # 창고 그림 속 작업대 윗면 높이 (바닥에서)
@@ -67,7 +73,7 @@ const SPOTS := [
 	{"id": "books", "floor": 0, "x": 514.0, "label": "안락의자에 앉아 교재 읽기"},
 	{"id": "mapbook", "floor": 0, "x": 580.0, "label": "교재 펼친 쪽: 옛사람들의 세계 지도"},
 	{"id": "comic", "floor": 0, "x": 655.0, "label": "그리스로마신화 만화책"},
-	{"id": "bench", "floor": 0, "x": 830.0, "label": "벤치에 앉아 기다리기"},
+	{"id": "bench", "floor": 0, "x": 878.0, "label": "벤치에 앉아 기다리기"},
 	{"id": "binoculars", "floor": 0, "x": 1296.0, "label": "부두 쌍안경으로 바다 보기"},
 	# 2층: 선생님 사무실 · 가운데 홀 · 강의실
 	{"id": "photo", "floor": 1, "x": 80.0, "label": "선생님이 찍은 사진: 별빛섬 바다의 북두칠성"},
@@ -97,7 +103,7 @@ const NPC_PLAN := {
 const TIDE_END := "21:30"
 const BOAT_X := 1060.0             # 돌쇠의 배 (떠나면 오른쪽 바다로)
 const FERRY_X := 1190.0            # 섬 연락선 (19:30 출항)
-const TEACHER_X := 880.0           # 프롤로그에서 선생님이 서 있는 곳 (마당)
+const TEACHER_X := 952.0           # 프롤로그에서 선생님이 서 있는 곳 (마당)
 
 var player_x := 200.0
 var floor_i := 2                  # 지금 있는 층 (0 = 1층/바깥, 1 = 2층, 2 = 3층 옥상)
@@ -380,36 +386,26 @@ func _draw_sea(m: float, hy: float) -> void:
 ## 땅 (천문대 아래부터 마당까지, 지하까지 이어지는 흙)과 마당
 func _draw_land() -> void:
 	var g: float = FLOOR_Y[0]
-	draw_rect(Rect2(0, g, YARD_X1, 200), Color8(26, 24, 44))
-	draw_rect(Rect2(0, g, YARD_X1, 1), Color8(96, 100, 164))
-	for i in 120:
-		var x := (i * 53) % int(YARD_X1)
-		var y := g + 3 + (i * 7) % 150
-		draw_rect(Rect2(x, y, 1, 1), Color(0.6, 0.65, 0.85, 0.3))
-	# 마당: 안내판, 가로등, 벤치
-	draw_rect(Rect2(748, g - 30, 2, 30), Color8(80, 70, 90))
-	draw_rect(Rect2(788, g - 30, 2, 30), Color8(80, 70, 90))
-	draw_rect(Rect2(734, g - 46, 70, 16), Color8(34, 30, 60))
-	draw_string(get_theme_default_font(), Vector2(736, g - 34), "어린이천문대", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	for x in [770.0, 950.0]:
-		draw_rect(Rect2(x, g - 46, 2, 46), Color8(40, 40, 60))
-		draw_rect(Rect2(x - 3, g - 49, 8, 4), Color8(255, 214, 140))
-		draw_circle(Vector2(x + 1, g - 46), 16, Color(1, 0.8, 0.45, 0.10))
-	_prop("bench", Vector2(830, g))
+	draw_rect(Rect2(0, g, YARD_X1, 220), SOIL)
+	_draw_outdoor("yard")
+	_prop("bench", Vector2(878, g))
+
+
+## 바깥 그림 배경 하나 그리기
+func _draw_outdoor(name: String) -> void:
+	if not _bg_tex.has(name):
+		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
+	draw_texture_rect(_bg_tex[name], OUTDOOR[name], false)
 
 
 ## 항구: 부두, 연락선, 쌍안경, 돌쇠의 배
 func _draw_harbor() -> void:
 	var g: float = FLOOR_Y[0]
-	draw_rect(Rect2(YARD_X1, g - 4, WORLD_W - YARD_X1, 6), Color8(92, 66, 54))
-	for x in range(int(YARD_X1), int(WORLD_W), 12):
-		draw_rect(Rect2(x, g - 4, 1, 6), Color8(60, 42, 38))
-	for x in range(int(YARD_X1) + 10, int(WORLD_W), 60):
-		draw_rect(Rect2(x, g + 2, 4, 40), Color8(50, 36, 34))
+	_draw_outdoor("harbor")
 	# 섬 연락선 (19:30에 떠남)
 	if Game.minutes < Game.at("19:30"):
 		var fx := FERRY_X
-		var fy := g + 12
+		var fy := g + 44                                           # 물 위 (부두 앞)
 		draw_colored_polygon(PackedVector2Array([Vector2(fx - 46, fy - 14), Vector2(fx + 46, fy - 14), Vector2(fx + 38, fy), Vector2(fx - 40, fy)]), Color8(200, 204, 220))
 		draw_rect(Rect2(fx - 26, fy - 28, 46, 14), Color8(170, 176, 200))
 		for i in 6:
@@ -417,12 +413,12 @@ func _draw_harbor() -> void:
 		draw_rect(Rect2(fx - 1, fy - 46, 2, 18), Color8(90, 90, 110))
 		draw_rect(Rect2(fx - 2, fy - 48, 4, 3), Color8(255, 240, 200))
 		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 52), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-	_prop("binoculars", Vector2(1296, g - 4))                           # 부두 쌍안경 (부두 끝)
+	_prop("binoculars", Vector2(1296, g))                           # 부두 쌍안경 (부두 끝)
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
 		if boat_x < WORLD_W + 60:
 			var bob := sin(_t * 1.5) * 1.5
 			var bx := boat_x
-			var by := g + 10 + bob
+			var by := g + 44 + bob
 			draw_colored_polygon(PackedVector2Array([Vector2(bx - 40, by - 10), Vector2(bx + 40, by - 10), Vector2(bx + 30, by), Vector2(bx - 30, by)]), Color8(110, 74, 50))
 			draw_rect(Rect2(bx - 40, by - 12, 80, 2), Color8(150, 104, 70))
 			draw_rect(Rect2(bx - 2, by - 62, 3, 52), Color8(80, 56, 40))
