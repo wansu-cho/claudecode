@@ -1,0 +1,25 @@
+{
+ "frame_w": 763,
+ "frame_h": 762,
+ "cols": 6,
+ "anchor": [
+  382,
+  648
+ ],
+ "body_h": 168,
+ "height": 1.0,
+ "anims": {
+  "boat": {
+   "frames": [
+    0
+   ],
+   "fps": 0
+  },
+  "ferry": {
+   "frames": [
+    1
+   ],
+   "fps": 0
+  }
+ }
+}

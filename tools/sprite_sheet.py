@@ -71,6 +71,21 @@ SHEETS = {
                  [["binoculars", 1, 0, True], ["bench", 1, 0, True], ["desk", 1, 0, True], ["door", 1, 0, True]]],
         "height": 1.0,
     },
+    "props2": {                       # 손님이 잠든 물건 (잠든 모습 / 빈 모습 _e), 칠판, 서쪽 표지판
+        "cols": 4,
+        "ref_px": 220,
+        "rows": [[["photo", 1, 0, True], ["photo_e", 1, 0, True], ["globe", 1, 0, True], ["globe_e", 1, 0, True]],
+                 [["drawing", 1, 0, True], ["drawing_e", 1, 0, True], ["dial", 1, 0, True], ["dial_e", 1, 0, True]],
+                 [["mapbook", 1, 0, True], ["mapbook_e", 1, 0, True], ["comic", 1, 0, True], ["comic_e", 1, 0, True]],
+                 [["board", 1, 0, True], ["sign", 1, 0, True]]],
+        "height": 1.0,
+    },
+    "boats": {                        # 돌쇠의 배, 섬 연락선 (아래 끝 = 물 닿는 선)
+        "cols": 2,
+        "ref_px": 220,
+        "rows": [[["boat", 1, 0, True], ["ferry", 1, 0, True]]],
+        "height": 1.0,
+    },
     "ina": {
         "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True], ["gaze", 1, 0, True]],
                  [["face", 5, 0, False]]],

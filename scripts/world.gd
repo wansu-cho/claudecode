@@ -408,25 +408,17 @@ func _draw_harbor() -> void:
 	if Game.minutes < Game.at("19:30"):
 		var fx := FERRY_X
 		var fy := g + 44                                           # 물 위 (부두 앞)
-		draw_colored_polygon(PackedVector2Array([Vector2(fx - 46, fy - 14), Vector2(fx + 46, fy - 14), Vector2(fx + 38, fy), Vector2(fx - 40, fy)]), Color8(200, 204, 220))
-		draw_rect(Rect2(fx - 26, fy - 28, 46, 14), Color8(170, 176, 200))
-		for i in 6:
-			draw_rect(Rect2(fx - 22 + i * 7, fy - 23, 3, 3), Color8(255, 220, 140))
-		draw_rect(Rect2(fx - 1, fy - 46, 2, 18), Color8(90, 90, 110))
-		draw_rect(Rect2(fx - 2, fy - 48, 4, 3), Color8(255, 240, 200))
-		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 52), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+		_prop2("ferry", Vector2(fx, fy), "", "boats")
+		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 104), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	_prop("binoculars", Vector2(1296, g))                           # 부두 쌍안경 (부두 끝)
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
 		if boat_x < WORLD_W + 60:
 			var bob := sin(_t * 1.5) * 1.5
 			var bx := boat_x
 			var by := g + 44 + bob
-			draw_colored_polygon(PackedVector2Array([Vector2(bx - 40, by - 10), Vector2(bx + 40, by - 10), Vector2(bx + 30, by), Vector2(bx - 30, by)]), Color8(110, 74, 50))
-			draw_rect(Rect2(bx - 40, by - 12, 80, 2), Color8(150, 104, 70))
-			draw_rect(Rect2(bx - 2, by - 62, 3, 52), Color8(80, 56, 40))
-			draw_colored_polygon(PackedVector2Array([Vector2(bx + 2, by - 60), Vector2(bx + 34, by - 20), Vector2(bx + 2, by - 18)]), Color8(220, 210, 186))
-			if Game.night.get("sailing", false):
-				SheetSprite.named("dolsoe").draw(self, "point", 0, Vector2(bx - 16, by - 12), false, CHAR_H)   # 북극성을 가리키며 떠남
+			if Game.night.get("sailing", false):                          # 북극성을 가리키며 떠남 (뱃전이 발을 가림)
+				SheetSprite.named("dolsoe").draw(self, "point", 0, Vector2(bx - 30, by - 6), false, CHAR_H)
+			_prop2("boat", Vector2(bx, by), "", "boats")
 
 
 func _draw_building() -> void:
@@ -499,9 +491,7 @@ func _draw_storage(f0: float) -> void:
 	_prop("orrery", Vector2(95, f0))
 	# 작업대(배경 그림) 위의 종이 앙부일구 (반구 그릇 모양)
 	var top := f0 - WORKBENCH_UP
-	if npc_state("bori") == "dormant":
-		draw_arc(Vector2(175, top - 1), 8, 0, PI, 10, Color8(240, 230, 200), 3)
-		draw_line(Vector2(175, top - 1), Vector2(175, top - 10), Color8(90, 70, 50), 1)
+	_prop2("dial", Vector2(175, top), "bori")
 	_glow_if_freed("bori", Rect2(162, top - 14, 26, 16))
 	_prop("door", Vector2(262, f0))                                     # 지하로 가는 문
 	for i in 7:                                                         # 문 위 별 모양 홈 7개: 모은 조각만큼 빛남
@@ -522,50 +512,25 @@ func _draw_hall(f0: float, f2: float) -> void:
 
 ## 1층 책방 (책장과 안락의자는 배경 그림): 교재 펼친 쪽(이나), 그리스로마신화 만화책(테오)
 func _draw_bookshop(font: Font, f0: float) -> void:
-	# 교재 펼친 쪽: 옛사람들의 세계 지도 (받침대 위에 펼친 책)
-	draw_rect(Rect2(578, f0 - 24, 4, 24), Color8(100, 80, 60))
-	draw_rect(Rect2(566, f0 - 34, 28, 12), Color8(240, 232, 210))
-	if npc_state("ina") == "dormant":
-		draw_circle(Vector2(573, f0 - 28), 4, Color8(180, 140, 90))
-		draw_circle(Vector2(587, f0 - 28), 4, Color8(180, 140, 90))
-	_glow_if_freed("ina", Rect2(564, f0 - 36, 32, 16))
-	# 만화책 진열대 (테오)
-	draw_rect(Rect2(640, f0 - 40, 32, 40), Color8(110, 78, 60))
-	draw_rect(Rect2(645, f0 - 36, 22, 28), Color8(80, 120, 200))
-	draw_string(font, Vector2(646, f0 - 18), "신화", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color8(255, 230, 140))
-	_glow_if_freed("teo", Rect2(642, f0 - 38, 28, 32))
+	_prop2("mapbook", Vector2(580, f0), "ina")                            # 교재 펼친 쪽: 옛사람들의 세계 지도
+	_glow_if_freed("ina", Rect2(564, f0 - 36, 32, 36))
+	_prop2("comic", Vector2(655, f0), "teo")                              # 그리스로마신화 만화책 진열대
+	_glow_if_freed("teo", Rect2(639, f0 - 40, 32, 40))
 
 
 ## 2층 선생님 사무실: 바다 별 사진(돌쇠), 책상과 쪽지, 지구본(휘)
 func _draw_office(f1: float) -> void:
-	draw_rect(Rect2(64, f1 - 74, 34, 26), Color8(196, 160, 100))      # 사진 액자
-	draw_rect(Rect2(66, f1 - 72, 30, 22), Color8(16, 18, 46))
-	for i in 7:
-		draw_rect(Rect2(70 + i * 3, f1 - 68 + (i * 5) % 9, 1, 1), Color8(240, 240, 255))
-	if npc_state("dolsoe") == "dormant":
-		draw_rect(Rect2(86, f1 - 56, 5, 4), Color8(230, 220, 190))     # 사진 속 작은 돛배
+	_prop2("photo", Vector2(81, f1 - 48), "dolsoe")                       # 바다 별 사진 액자 (벽)
 	_glow_if_freed("dolsoe", Rect2(62, f1 - 76, 38, 30))
 	_prop("desk", Vector2(160, f1))
-	# 지구본 (받침대 위의 둥근 지구)
-	draw_rect(Rect2(241, f1 - 14, 8, 14), Color8(140, 110, 70))
-	draw_circle(Vector2(245, f1 - 24), 10, Color8(70, 130, 200))
-	draw_circle(Vector2(242, f1 - 27), 4, Color8(110, 180, 110))
-	draw_arc(Vector2(245, f1 - 24), 12, PI * 0.6, PI * 1.9, 12, Color8(200, 170, 90), 1.0)
+	_prop2("globe", Vector2(245, f1), "hwi")                              # 지구본
 	_glow_if_freed("hwi", Rect2(231, f1 - 38, 28, 38))
 
 
 ## 2층 강의실: 칠판, 판서 그림(케티), 잠든 친구들
 func _draw_lecture(font: Font, f1: float) -> void:
-	draw_rect(Rect2(470, f1 - 78, 44, 46), Color8(120, 90, 60))      # 칠판
-	draw_rect(Rect2(473, f1 - 75, 38, 40), Color8(36, 72, 56))
-	for i in 5:
-		draw_rect(Rect2(477, f1 - 70 + i * 7, 14 + (i * 7) % 16, 1), Color(0.9, 0.95, 0.9, 0.7))
-	# 판서 그림: 누트 여신이 하늘처럼 몸을 굽힌 그림 (큰 종이)
-	draw_rect(Rect2(520, f1 - 74, 36, 30), Color8(240, 232, 210))
-	draw_arc(Vector2(538, f1 - 50), 13, PI, TAU, 14, Color8(40, 60, 140), 2)
-	draw_line(Vector2(524, f1 - 49), Vector2(552, f1 - 49), Color8(90, 150, 80), 1)
-	if npc_state("keti") == "dormant":
-		draw_rect(Rect2(536, f1 - 62, 4, 8), Color8(180, 120, 80))
+	_prop2("board", Vector2(492, f1 - 32))                                # 칠판 (벽)
+	_prop2("drawing", Vector2(538, f1 - 44), "keti")                      # 판서 그림: 하늘의 여신 누트
 	_glow_if_freed("keti", Rect2(518, f1 - 76, 40, 34))
 	var kids := SheetSprite.named("kids")
 	for k in 4:
@@ -590,14 +555,20 @@ func _draw_roof(font: Font, f2: float) -> void:
 		draw_texture_rect_region(tex, Rect2(x, ROOF_TILE.position.y, w, ROOF_TILE.size.y), src)
 		x += w
 	_draw_outdoor("roof_dome")
-	draw_rect(Rect2(58, f2 - 30, 24, 12), Color8(34, 30, 60))           # 서쪽 난간의 방위 표지판
-	draw_string(font, Vector2(60, f2 - 21), "← 서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+	_prop2("sign", Vector2(70, f2))                                       # 서쪽 방위 표지판
+	draw_string(font, Vector2(64, f2 - 16), "서", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Color8(255, 240, 200))
 	_prop("telescope", Vector2(180, f2))                                # 북쪽 하늘 망원경
 
 
 ## 관측 장치·소품 그림 (props 시트). feet: 바닥 가운데
 func _prop(name: String, feet: Vector2) -> void:
 	SheetSprite.named("props").draw(self, name, 0, feet, false, CHAR_H)
+
+
+## 소품 2차 (props2, boats 시트). guest가 있으면 손님이 깨어나 빠져나간 뒤에는 빈 모습(_e)으로
+func _prop2(name: String, feet: Vector2, guest := "", sheet := "props2") -> void:
+	var n := name if guest == "" or npc_state(guest) == "dormant" else name + "_e"
+	SheetSprite.named(sheet).draw(self, n, 0, feet, false, CHAR_H)
 
 
 func _glow_if_freed(id: String, r: Rect2) -> void:
