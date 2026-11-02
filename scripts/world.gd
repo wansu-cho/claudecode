@@ -42,6 +42,10 @@ const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새
 const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
 ## 지하 문의 별 모양 홈: (고리 반지름, 문 바닥에서 고리 가운데까지 높이) — 게임 좌표
 const DOOR_RING := Vector2(6.1, 36.8)
+## 그림 배경이 있는 방: 이름 -> 게임 속 자리 (그림 바닥 쪽 8칸은 바닥판 아래로 들어감)
+const BACKGROUNDS := {
+	"office": Rect2(40, 88, 260, 110),
+}
 const HD := {"keti": "keti", "teo": "teo", "ina": "ina", "dolsoe": "dolsoe", "bori": "bori", "hwi": "hwi"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
@@ -106,6 +110,7 @@ var _npc_moving := {}
 var _npc_seen := {}               # 사람이 처음 보인 뒤 지난 시간 (깨어나는 동작)
 var prologue := false             # 첫 밤 전 오후: 마당의 선생님만 만날 수 있고 천문대 문은 닫혀 있음
 var _t := 0.0
+var _bg_tex := {}
 
 
 func _ready() -> void:
@@ -433,6 +438,7 @@ func _draw_building() -> void:
 		draw_rect(Rect2(B_X0 + 12, f - 100, HALL_X0 - B_X0 - 16, 100), inside)
 		draw_rect(Rect2(HALL_X1 + 4, f - 100, B_X1 - HALL_X1 - 16, 100), inside)
 	draw_rect(Rect2(HALL_X0 + 4, f2 + 10, HALL_X1 - HALL_X0 - 8, f0 - f2 - 10), hall_in)   # 2개 층 높이의 큰 홀
+	_draw_backgrounds()
 	# 바닥판: 2층은 양쪽 방과, 홀을 가로지르는 다리(난간)
 	draw_rect(Rect2(B_X0, f1, HALL_X0 - B_X0 + 4, 10), slab)
 	draw_rect(Rect2(HALL_X1 - 4, f1, B_X1 - HALL_X1 + 4, 10), slab)
@@ -447,6 +453,8 @@ func _draw_building() -> void:
 	# 천장 조명
 	for f in [f0, f1]:
 		for lx in [120.0, 230.0, 540.0, 650.0]:
+			if _has_bg(lx, f):
+				continue
 			draw_rect(Rect2(lx, f - 100, 6, 3), Color8(255, 220, 150))
 			draw_circle(Vector2(lx + 3, f - 96), 20, Color(1, 0.85, 0.55, 0.07))
 
@@ -461,7 +469,8 @@ func _draw_building() -> void:
 	# 방 이름
 	draw_string(font, Vector2(B_X0 + 20, f0 - 84), "1층 창고 · 실습실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 	draw_string(font, Vector2(HALL_X1 + 16, f0 - 84), "1층 책방", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_string(font, Vector2(B_X0 + 20, f1 - 84), "2층 선생님 사무실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	if not _has_bg(B_X0 + 20, f1):                                    # 그림 배경이 있는 방은 이름을 따로 쓰지 않음
+		draw_string(font, Vector2(B_X0 + 20, f1 - 84), "2층 선생님 사무실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 	draw_string(font, Vector2(HALL_X1 + 16, f1 - 84), "2층 강의실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 
 	_draw_storage(f0)
@@ -470,6 +479,28 @@ func _draw_building() -> void:
 	_draw_office(f1)
 	_draw_lecture(font, f1)
 	_draw_roof(font, f2)
+
+
+## 그림 배경 (방 하나씩). 창문처럼 비워 둔 곳에는 지금 하늘 색이 비쳐 보입니다.
+func _draw_backgrounds() -> void:
+	var dark := Astro.darkness(Game.minutes)
+	var sky := SkyPainter.DAY_TOP.lerp(SkyPainter.NIGHT_TOP, dark).lerp(SkyPainter.MOON_SKY, Astro.moonlight(Game.minutes) * dark * 0.3)
+	for name in BACKGROUNDS:
+		if not _bg_tex.has(name):
+			_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
+		var r: Rect2 = BACKGROUNDS[name]
+		draw_rect(r, sky)
+		for i in 6:                                                    # 창밖의 별 몇 개
+			draw_rect(Rect2(r.position + Vector2((i * 37) % int(r.size.x), (i * 23) % 40 + 8), Vector2.ONE), Color(1, 1, 1, 0.7 * dark))
+		draw_texture_rect(_bg_tex[name], r, false)
+
+
+func _has_bg(x: float, floor_line: float) -> bool:
+	for name in BACKGROUNDS:
+		var r: Rect2 = BACKGROUNDS[name]
+		if x >= r.position.x and x <= r.end.x and floor_line > r.position.y and floor_line <= r.end.y:
+			return true
+	return false
 
 
 ## 1층 창고(실습실): 지구 공전 모형, 아이들이 만든 종이 앙부일구, 지하로 가는 문
