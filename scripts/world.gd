@@ -45,9 +45,16 @@ const DOOR_RING := Vector2(6.1, 36.8)
 ## 그림 배경이 있는 방: 이름 -> 게임 속 자리 (그림 바닥 쪽 8칸은 바닥판 아래로 들어감)
 const BACKGROUNDS := {
 	"office": Rect2(40, 88, 260, 110),
+	"lecture": Rect2(460, 88, 260, 110),
+	"storage": Rect2(40, 198, 260, 110),
+	"bookshop": Rect2(460, 198, 260, 110),
+	"hall": Rect2(300, 88, 160, 220),
 }
-## 사무실 벽시계: 배경 그림 속 시계 자리 (방 왼쪽 위에서의 위치, 반지름) — 바늘은 게임 시각에 맞춰 그림
-const OFFICE_CLOCK := Vector3(130.8, 23.6, 5.6)
+## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
+const BRIDGE_UP := 19.0
+const WORKBENCH_UP := 50.0          # 창고 그림 속 작업대 윗면 높이 (바닥에서)
+## 벽시계: 배경 이름 -> (방 왼쪽 위에서의 위치 x, y, 반지름) — 바늘은 게임 시각에 맞춰 그림
+const CLOCKS := {"office": Vector3(130.6, 23.1, 5.5), "lecture": Vector3(115.0, 31.9, 5.7)}
 const HD := {"keti": "keti", "teo": "teo", "ina": "ina", "dolsoe": "dolsoe", "bori": "bori", "hwi": "hwi"}   # 새 그림이 있는 사람 -> 시트 이름
 
 const SPOTS := [
@@ -57,7 +64,7 @@ const SPOTS := [
 	{"id": "b1door", "floor": 0, "x": 262.0, "label": "지하로 내려가는 문"},
 	{"id": "stairs", "floor": 0, "x": STAIRS_X, "label": "나선 계단"},
 	{"id": "pendulum", "floor": 0, "x": PEND_X, "label": "푸코 진자 살펴보기"},
-	{"id": "books", "floor": 0, "x": 505.0, "label": "어린이천문대 교재 읽기"},
+	{"id": "books", "floor": 0, "x": 514.0, "label": "안락의자에 앉아 교재 읽기"},
 	{"id": "mapbook", "floor": 0, "x": 580.0, "label": "교재 펼친 쪽: 옛사람들의 세계 지도"},
 	{"id": "comic", "floor": 0, "x": 655.0, "label": "그리스로마신화 만화책"},
 	{"id": "bench", "floor": 0, "x": 830.0, "label": "벤치에 앉아 기다리기"},
@@ -156,6 +163,13 @@ func go_floor(f: int) -> void:
 
 
 func floor_y(f: int) -> float:
+	return FLOOR_Y[f]
+
+
+## 서 있는 높이: 2층에서 가운데 홀을 지날 때는 홀 그림 속 다리 위
+func ground_y(f: int, x: float) -> float:
+	if f == 1 and x > HALL_X0 + 6 and x < HALL_X1 - 6:
+		return FLOOR_Y[1] - BRIDGE_UP
 	return FLOOR_Y[f]
 
 
@@ -420,8 +434,6 @@ func _draw_harbor() -> void:
 func _draw_building() -> void:
 	var font := get_theme_default_font()
 	var wall := Color8(140, 144, 182)
-	var inside := Color8(66, 56, 84)
-	var hall_in := Color8(56, 50, 80)
 	var slab := Color8(196, 200, 226)
 	var f0: float = FLOOR_Y[0]
 	var f1: float = FLOOR_Y[1]
@@ -434,46 +446,14 @@ func _draw_building() -> void:
 	draw_circle(vault, 22, Color8(60, 54, 70))
 	draw_arc(vault, 22, 0, TAU, 32, Color(1, 0.84, 0.4, 0.35 + 0.15 * sin(_t * 1.5)), 2.0)
 
-	# 바깥벽과 방 안쪽
+	# 바깥벽 (방 안은 모두 그림 배경)
 	draw_rect(Rect2(B_X0, f2, B_X1 - B_X0, f0 - f2), wall)
-	for f in [f0, f1]:
-		draw_rect(Rect2(B_X0 + 12, f - 100, HALL_X0 - B_X0 - 16, 100), inside)
-		draw_rect(Rect2(HALL_X1 + 4, f - 100, B_X1 - HALL_X1 - 16, 100), inside)
-	draw_rect(Rect2(HALL_X0 + 4, f2 + 10, HALL_X1 - HALL_X0 - 8, f0 - f2 - 10), hall_in)   # 2개 층 높이의 큰 홀
 	_draw_backgrounds()
-	# 바닥판: 2층은 양쪽 방과, 홀을 가로지르는 다리(난간)
+	# 바닥판: 2층은 양쪽 방만 (가운데 홀은 그림 속 다리)
 	draw_rect(Rect2(B_X0, f1, HALL_X0 - B_X0 + 4, 10), slab)
 	draw_rect(Rect2(HALL_X1 - 4, f1, B_X1 - HALL_X1 + 4, 10), slab)
-	draw_rect(Rect2(HALL_X0, f1, HALL_X1 - HALL_X0, 4), slab.darkened(0.15))
-	for x in range(int(HALL_X0), int(HALL_X1), 10):
-		draw_rect(Rect2(x, f1 - 14, 1, 14), Color8(150, 154, 190))
-	draw_rect(Rect2(HALL_X0, f1 - 15, HALL_X1 - HALL_X0, 2), Color8(170, 174, 206))
 	draw_rect(Rect2(B_X0, f2, B_X1 - B_X0, 10), slab)               # 옥상 바닥
 	draw_rect(Rect2(B_X0, f0, B_X1 - B_X0, 10), Color8(110, 92, 110))
-	# 1층 오른쪽 벽의 문 (바깥으로)
-	draw_rect(Rect2(B_X1 - 12, f0 - 46, 12, 46), Color8(110, 78, 60))
-	# 천장 조명
-	for f in [f0, f1]:
-		for lx in [120.0, 230.0, 540.0, 650.0]:
-			if _has_bg(lx, f):
-				continue
-			draw_rect(Rect2(lx, f - 100, 6, 3), Color8(255, 220, 150))
-			draw_circle(Vector2(lx + 3, f - 96), 20, Color(1, 0.85, 0.55, 0.07))
-
-	# 가운데 홀: 나선 계단 (층마다 같은 자리)
-	for f in [f0, f1]:
-		for i in 9:
-			var a := float(i) / 8.0
-			draw_rect(Rect2(STAIRS_X - 16 + sin(a * TAU) * 10.0, f - 6 - i * 11, 22, 3), Color8(150, 140, 180))
-		draw_rect(Rect2(STAIRS_X - 2, f - 100, 3, 100), Color8(110, 104, 140))
-	draw_string(font, Vector2(STAIRS_X - 24, f0 - 92), "나선 계단", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-
-	# 방 이름
-	draw_string(font, Vector2(B_X0 + 20, f0 - 84), "1층 창고 · 실습실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_string(font, Vector2(HALL_X1 + 16, f0 - 84), "1층 책방", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	if not _has_bg(B_X0 + 20, f1):                                    # 그림 배경이 있는 방은 이름을 따로 쓰지 않음
-		draw_string(font, Vector2(B_X0 + 20, f1 - 84), "2층 선생님 사무실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	draw_string(font, Vector2(HALL_X1 + 16, f1 - 84), "2층 강의실", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 
 	_draw_storage(f0)
 	_draw_hall(f0, f2)
@@ -495,8 +475,9 @@ func _draw_backgrounds() -> void:
 		for i in 6:                                                    # 창밖의 별 몇 개
 			draw_rect(Rect2(r.position + Vector2((i * 37) % int(r.size.x), (i * 23) % 40 + 8), Vector2.ONE), Color(1, 1, 1, 0.7 * dark))
 		draw_texture_rect(_bg_tex[name], r, false)
-		if name == "office":
-			_draw_clock(r.position + Vector2(OFFICE_CLOCK.x, OFFICE_CLOCK.y), OFFICE_CLOCK.z)
+		if CLOCKS.has(name):
+			var ck: Vector3 = CLOCKS[name]
+			_draw_clock(r.position + Vector2(ck.x, ck.y), ck.z)
 
 
 ## 진짜로 가는 벽시계: 그림 속 시계 판을 덮고 눈금과 바늘을 지금 게임 시각으로 그립니다.
@@ -516,27 +497,15 @@ func _draw_clock(c: Vector2, rad: float) -> void:
 	draw_circle(c, 0.6, Color8(150, 60, 40))
 
 
-func _has_bg(x: float, floor_line: float) -> bool:
-	for name in BACKGROUNDS:
-		var r: Rect2 = BACKGROUNDS[name]
-		if x >= r.position.x and x <= r.end.x and floor_line > r.position.y and floor_line <= r.end.y:
-			return true
-	return false
-
-
 ## 1층 창고(실습실): 지구 공전 모형, 아이들이 만든 종이 앙부일구, 지하로 가는 문
 func _draw_storage(f0: float) -> void:
-	for i in 3:                                                         # 선반의 상자들
-		draw_rect(Rect2(60 + i * 14, f0 - 70 + (i % 2) * 6, 12, 10), Color8(150, 120, 90))
 	_prop("orrery", Vector2(95, f0))
-	# 실습 책상 위의 종이 앙부일구 (반구 그릇 모양)
-	draw_rect(Rect2(156, f0 - 16, 40, 3), Color8(150, 110, 80))
-	draw_rect(Rect2(160, f0 - 13, 2, 13), Color8(90, 66, 50))
-	draw_rect(Rect2(190, f0 - 13, 2, 13), Color8(90, 66, 50))
+	# 작업대(배경 그림) 위의 종이 앙부일구 (반구 그릇 모양)
+	var top := f0 - WORKBENCH_UP
 	if npc_state("bori") == "dormant":
-		draw_arc(Vector2(175, f0 - 17), 9, 0, PI, 10, Color8(240, 230, 200), 3)
-		draw_line(Vector2(175, f0 - 17), Vector2(175, f0 - 26), Color8(90, 70, 50), 1)
-	_glow_if_freed("bori", Rect2(160, f0 - 32, 30, 18))
+		draw_arc(Vector2(175, top - 1), 8, 0, PI, 10, Color8(240, 230, 200), 3)
+		draw_line(Vector2(175, top - 1), Vector2(175, top - 10), Color8(90, 70, 50), 1)
+	_glow_if_freed("bori", Rect2(162, top - 14, 26, 16))
 	_prop("door", Vector2(262, f0))                                     # 지하로 가는 문
 	for i in 7:                                                         # 문 위 별 모양 홈 7개: 모은 조각만큼 빛남
 		if i < Game.pieces():
@@ -554,17 +523,8 @@ func _draw_hall(f0: float, f2: float) -> void:
 	_prop("bob", bob)
 
 
-## 1층 책방: 책장, 교재 책상, 교재 펼친 쪽(이나), 그리스로마신화 만화책(테오)
+## 1층 책방 (책장과 안락의자는 배경 그림): 교재 펼친 쪽(이나), 그리스로마신화 만화책(테오)
 func _draw_bookshop(font: Font, f0: float) -> void:
-	var spine := [Color8(200, 80, 70), Color8(70, 130, 200), Color8(230, 190, 80), Color8(90, 170, 110), Color8(170, 110, 190), Color8(240, 240, 230)]
-	var x0 := 470.0
-	draw_rect(Rect2(x0, f0 - 70, 22, 70), Color8(110, 78, 60))
-	for row in 3:
-		for k in 4:
-			draw_rect(Rect2(x0 + 2 + k * 5, f0 - 64 + row * 22, 4, 14), spine[(row * 4 + k) % spine.size()])
-	draw_rect(Rect2(492, f0 - 22, 30, 22), Color8(140, 100, 70))      # 교재 책상
-	draw_rect(Rect2(496, f0 - 26, 10, 4), Color8(70, 130, 200))
-	draw_string(font, Vector2(494, f0 - 30), "교재", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	# 교재 펼친 쪽: 옛사람들의 세계 지도 (받침대 위에 펼친 책)
 	draw_rect(Rect2(578, f0 - 24, 4, 24), Color8(100, 80, 60))
 	draw_rect(Rect2(566, f0 - 34, 28, 12), Color8(240, 232, 210))
@@ -656,7 +616,7 @@ func _draw_people() -> void:
 		var p: Vector2 = npc[id]
 		var f := int(p.y)
 		var on_pier := f == 0 and p.x > YARD_X1
-		var feet := Vector2(p.x, floor_y(f) - (4 if on_pier else 0))
+		var feet := Vector2(p.x, ground_y(f, p.x) - (4 if on_pier else 0))
 		if id == "keti":
 			feet.y += sin(_t * 2.0) - 2.0
 		if HD.has(id):
@@ -671,11 +631,11 @@ func _draw_people() -> void:
 		draw_circle(tf + Vector2(0, -CHAR_H * 0.65), CHAR_H * 0.8, Color(1.0, 0.72, 0.42, 0.22))
 		t_sp.draw(self, "wave" if near else "idle", 0 if near else t_sp.frame_at("idle", _t), tf, player_x < TEACHER_X,
 				CHAR_H, Color(0.16, 0.13, 0.22))                # 해를 등져 얼굴이 보이지 않는 실루엣
-	var ground_y := floor_y(floor_i) - (4 if floor_i == 0 and _on_pier() else 0)
+	var gy := ground_y(floor_i, player_x) - (4 if floor_i == 0 and _on_pier() else 0)
 	if y_off < 0.0:
 		var w := 16.0 * (1.0 + y_off / 80.0)
-		draw_rect(Rect2(player_x - w / 2.0, ground_y - 1, w, 2), Color(0, 0, 0, 0.35))
-	var feet := Vector2(player_x, ground_y + y_off)
+		draw_rect(Rect2(player_x - w / 2.0, gy - 1, w, 2), Color(0, 0, 0, 0.35))
+	var feet := Vector2(player_x, gy + y_off)
 	var hero := SheetSprite.named("hero")
 	var anim := "idle"
 	var fi := hero.frame_at("idle", _t)

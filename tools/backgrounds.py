@@ -19,6 +19,10 @@ PX_PER_UNIT = 168 / 40           # tools/sprite_sheet.py의 TARGET_H(168) ÷ 플
 ## 배경마다 게임 속 크기 (게임 좌표: 가로, 세로) — scripts/world.gd의 BACKGROUNDS와 같게
 SIZES = {
     "office": (260, 110),
+    "lecture": (260, 110),
+    "storage": (260, 110),
+    "bookshop": (260, 110),
+    "hall": (160, 220),
 }
 
 
