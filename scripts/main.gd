@@ -211,7 +211,11 @@ func _on_interact(id: String) -> void:
 	_busy = true
 	if world.prologue:
 		if id == "teacher":
-			await dialogue.say(Story.PROLOGUE_TEACHER)
+			# 손전등을 건네는 줄부터 플레이어 손에 손전등이 보입니다
+			var give := Story.PROLOGUE_TEACHER.find(Story.PROLOGUE_GIVE)
+			await dialogue.say(Story.PROLOGUE_TEACHER.slice(0, give))
+			world.has_lantern = true
+			await dialogue.say(Story.PROLOGUE_TEACHER.slice(give))
 			world.prologue_done.emit()
 		else:
 			await dialogue.say(Story.PROLOGUE_BLOCK)

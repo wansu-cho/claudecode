@@ -30,6 +30,11 @@ SHEETS = {
                  [["look", 1, 0, True]], [["scope", 1, 0, True]], [["face", 5, 0, False]]],
         "height": 1.0,
     },
+    "hero_bare": {                    # 손전등을 받기 전의 플레이어 (프롤로그)
+        "cols": 6,
+        "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["jump", 3, 0, True]]],
+        "height": 1.0,
+    },
     "keti": {
         "rows": [[["idle", 4, 4, True]], [["walk", 6, 10, True]], [["wake", 4, 3, True]], [["face", 5, 0, False]]],
         "height": 1.0,

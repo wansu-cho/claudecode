@@ -120,6 +120,7 @@ var prompt_rect := Rect2()        # 화면에 보이는 [확인] 말풍선 (누�
 var nearest := ""
 var npc := {}                     # 등장인물 id -> 지금 위치 (x, 층)
 var boat_x := BOAT_X
+var has_lantern := true              # 프롤로그에서 선생님이 손전등을 건네기 전에는 false
 var cam := Vector2.ZERO
 var land_t := 9.0                 # 착지한 뒤 지난 시간 (착지 자세를 잠깐 보여 줌)
 var _npc_prev := {}               # 사람마다 지난 프레임 위치 (걷는지 알아보려고)
@@ -154,6 +155,7 @@ func reset_night() -> void:
 ## 프롤로그: 항구의 연락선 옆에서 시작합니다.
 func start_prologue() -> void:
 	prologue = true
+	has_lantern = false
 	floor_i = 0
 	player_x = 1150.0
 	facing = -1
@@ -610,7 +612,7 @@ func _draw_people() -> void:
 		var w := 16.0 * (1.0 + y_off / 80.0)
 		draw_rect(Rect2(player_x - w / 2.0, gy - 1, w, 2), Color(0, 0, 0, 0.35))
 	var feet := Vector2(player_x, gy + y_off)
-	var hero := SheetSprite.named("hero")
+	var hero := SheetSprite.named("hero" if has_lantern else "hero_bare")   # 선생님께 받기 전엔 빈손
 	var anim := "idle"
 	var fi := hero.frame_at("idle", _t)
 	if y_off < 0.0:
