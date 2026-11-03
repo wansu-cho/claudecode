@@ -15,9 +15,18 @@ signal closed
 const LAT := 34.0
 const MONTH_DAY := [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349]   # 각 달 15일의 날짜 번호
 const CENTER := Vector2(188, 182)
-const ORBIT := Vector2(136, 104)
+const ORBIT := Vector2(136, 29.3)           # 비스듬히 본 궤도 고리 (그림 속 고리 크기)
+const BASE_SIZE := Vector2(272, 149)        # 받침대 그림 크기와 그 안의 고리 가운데
+const BASE_RING := Vector2(136, 29.9)
+const SUN := Vector2(188, 172)              # 받침 기둥 위 태양 가운데
+const SUN_R := 30.0
+const EARTH_SIZE := Vector2(30, 60.5)       # 지구 그림 (자전축 막대 포함)
+const EARTH_R := 15.0
 
 var month := 12
+var _base: Texture2D = load("res://assets/views/orrery_base.png")
+var _sun: Texture2D = load("res://assets/views/orrery_sun.png")
+var _earth: Texture2D = load("res://assets/views/orrery_earth.png")
 var tilt := 23.5
 var _rec: Dictionary
 var _status := ""
@@ -128,29 +137,24 @@ func _draw() -> void:
 	var font := get_theme_default_font()
 	draw_rect(Rect2(Vector2.ZERO, size), Color8(20, 18, 34))
 	draw_string(font, Vector2(10, 16), "1층 창고 · 지구 공전 모형", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
-	# 궤도와 태양
-	var pts := PackedVector2Array()
-	for i in 49:
-		pts.append(CENTER + Vector2.from_angle(TAU * i / 48.0) * ORBIT)
-	draw_polyline(pts, Color(0.7, 0.7, 1.0, 0.4), 1.0)
-	draw_circle(CENTER, 18, Color8(255, 200, 90))
-	draw_circle(CENTER, 26, Color(1, 0.8, 0.4, 0.15))
-	for mo in range(1, 13):
-		var a := _orbit_angle(mo)
-		var p := CENTER + Vector2.from_angle(a) * ORBIT * 1.18
-		draw_string(font, p - Vector2(8, -4), "%d월" % mo, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD if mo == month else Pal.DIM)
-	# 지구: 자전축 방향은 1년 내내 그대로 (오른쪽으로 기울어 있음)
-	# 6월(하지)에는 지구가 태양 왼쪽에 있어 북극이 태양 쪽으로, 12월에는 반대쪽으로 기웁니다.
+	# 공전 모형: 나무 받침대와 금속 궤도 고리(비스듬히 본 모습), 받침 기둥 위의 태양
+	draw_texture_rect(_base, Rect2(CENTER - BASE_RING, BASE_SIZE), false)
 	var ang := _orbit_angle(month)
-	var e := CENTER + Vector2.from_angle(ang) * ORBIT
-	draw_circle(e, 12, Color8(40, 70, 140))
-	var to_sun := (CENTER - e).normalized()
-	for i in 13:                                     # 해를 향한 반쪽은 밝게
-		var a2 := to_sun.angle() - PI / 2.0 + PI * i / 12.0
-		draw_line(e, e + Vector2.from_angle(a2) * 12.0, Color8(90, 150, 230), 2)
-	var axis := Vector2.from_angle(-PI / 2.0 + deg_to_rad(tilt))
-	draw_line(e - axis * 18.0, e + axis * 18.0, Color8(240, 240, 255), 1)
-	draw_string(font, e + axis * 20.0 + Vector2(-3, 0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
+	var e := CENTER + Vector2(cos(ang) * ORBIT.x, sin(ang) * ORBIT.y)
+	var far := sin(ang) < 0.0                         # 고리 뒤쪽이면 태양에 가려짐
+	if far:
+		_draw_earth(e)
+	draw_circle(SUN, SUN_R + 10.0, Color(1, 0.8, 0.4, 0.12))
+	draw_texture_rect(_sun, Rect2(SUN - Vector2(SUN_R, SUN_R), Vector2(SUN_R, SUN_R) * 2.0), false)
+	if not far:
+		_draw_earth(e)
+	for mo in [3, 6, 9, 12]:                          # 계절의 가운데 달만 고리 둘레에 (고리가 납작해 다 쓰면 겹침)
+		if mo == month:
+			continue
+		var a := _orbit_angle(mo)
+		var p := CENTER + Vector2(cos(a) * (ORBIT.x + 30.0), sin(a) * (ORBIT.y + (26.0 if sin(a) < 0.0 else 52.0)))
+		draw_string(font, p - Vector2(10, -4), "%d월" % mo, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	draw_string(font, e + Vector2(16, -18), "%d월" % month, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)   # 지금 지구가 있는 달
 
 	# 오른쪽 정보판
 	var r := Rect2(380, 34, 250, 210)
@@ -188,6 +192,21 @@ func _draw() -> void:
 	var sr := Rect2(380, 252, 250, 72)
 	draw_rect(sr, Pal.PANEL)
 	draw_multiline_string(font, sr.position + Vector2(6, 14), hint, HORIZONTAL_ALIGNMENT_LEFT, sr.size.x - 12, Pal.SMALL, 4, Pal.TEXT)
+
+
+## 지구 그림: 자전축은 1년 내내 같은 쪽(오른쪽)으로 기울어 있고, 태양 반대쪽 절반은 밤
+func _draw_earth(e: Vector2) -> void:
+	var font := get_theme_default_font()
+	draw_set_transform(e, deg_to_rad(tilt), Vector2.ONE)
+	draw_texture_rect(_earth, Rect2(-EARTH_SIZE.x / 2.0, -EARTH_SIZE.y * 0.506, EARTH_SIZE.x, EARTH_SIZE.y), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var away := (e - SUN).angle()                     # 태양 반대쪽
+	var night := PackedVector2Array([e])
+	for i in 17:
+		night.append(e + Vector2.from_angle(away - PI / 2.0 + PI * i / 16.0) * EARTH_R)
+	draw_colored_polygon(night, Color(0.02, 0.02, 0.12, 0.6))
+	var axis := Vector2.from_angle(-PI / 2.0 + deg_to_rad(tilt))
+	draw_string(font, e + axis * 36.0 + Vector2(-3, 0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
 
 
 ## 북쪽에서 내려다본 공전 (시계 반대 방향). 하지(6월 21일) = 태양 왼쪽

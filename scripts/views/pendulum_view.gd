@@ -11,6 +11,8 @@ const RATE := 8.39          # 도/시간 (북위 34°)
 const START_ANGLE := 24.0   # 17:00에 흔들리는 방향 (북쪽에서 시계 방향, 도)
 
 var _status := ""
+var _dial: Texture2D = load("res://assets/views/pend_dial.png")
+var _bob: Texture2D = load("res://assets/views/pend_bob.png")
 var _t := 0.0
 
 
@@ -85,12 +87,7 @@ func _draw() -> void:
 	var font := get_theme_default_font()
 	draw_rect(Rect2(Vector2.ZERO, size), Color8(30, 26, 44))
 	draw_string(font, Vector2(10, 16), "1층 가운데 홀 · 푸코 진자 (위에서 본 모습) · %s" % Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
-	draw_circle(CENTER, R + 8, Color8(56, 48, 76))
-	draw_circle(CENTER, R, Color8(72, 62, 96))
-	for i in 72:
-		var d := _dir(i * 5.0)
-		var l := 10.0 if i % 6 == 0 else 4.0
-		draw_line(CENTER + d * (R - l), CENTER + d * R, Color8(170, 160, 200), 1)
+	draw_texture_rect(_dial, Rect2(CENTER - Vector2(R, R), Vector2(R, R) * 2.0), false)   # 바닥 눈금판 (위에서 본 모습)
 	for spec in [["북", 0.0], ["동", 90.0], ["남", 180.0], ["서", 270.0]]:
 		draw_string(font, CENTER + _dir(spec[1]) * (R + 18) - Vector2(6, -5), spec[0], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	# 기록한 방향
@@ -100,10 +97,9 @@ func _draw() -> void:
 		draw_string(font, CENTER + d * (R + 4) + Vector2(2, 0), Game.clock(float(r["m"])), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.PINK)
 	# 지금 흔들리는 추
 	var d := _dir(angle_at(Game.minutes))
-	Pal.dotted(self, CENTER - d * (R - 6), CENTER + d * (R - 6), Color(1, 1, 1, 0.35), 3)
+	Pal.dotted(self, CENTER - d * (R - 6), CENTER + d * (R - 6), Color(0.15, 0.1, 0.3, 0.6), 3)   # 흔들리는 방향 (밝은 눈금판 위)
 	var bob := CENTER + d * (R - 14) * sin(_t * TAU / 4.0)
-	draw_circle(bob, 9, Color8(230, 190, 90))
-	draw_circle(bob - Vector2(2, 2), 3, Color8(255, 236, 170))
+	draw_texture_rect(_bob, Rect2(bob - Vector2(10, 10), Vector2(20, 20)), false)
 	var r := Rect2(10, 296, 420, 52)
 	draw_rect(r, Pal.PANEL)
 	draw_rect(r, Pal.LINE, false, 1.0)

@@ -35,11 +35,27 @@ SIZES = {
     "roof_deck": (84.7, 38.5),   # 해넘이 전망대 (계단 3칸 높은 데크)
     "roof_chair": (28.9, 20.9),  # 맨눈 관측 의자
     "dome": (182.7, 152.5),      # 돔 (문 포함)
+    "orrery_sun": (60, 60),      # ── 관측 화면 부품 (크기 = 화면 640×360 기준 픽셀) ──
+    "orrery_earth": (30, 60.5),
+    "orrery_base": (272, 149),
+    "pend_dial": (240, 240),
+    "pend_bob": (20, 20),
+    "lx200": (46.9, 61.6),       # 돔 안의 망원경 (게임 좌표)
+    "m42": (300, 300),           # 16인치로 본 오리온대성운 (검은 배경, 더하기 합성)
     "boat": (175.3, 123.6),      # 돌쇠의 배 (아래 끝 = 물 닿는 선)
     "ferry": (283.5, 83.6),      # 섬 연락선
 }
 ## 원본에서 잘라 쓸 부분 (왼쪽, 위, 오른쪽, 아래) — 옥상은 난간 기둥 가운데에서 잘라야 이음매가 맞음
+## 한 원본 그림에서 여러 부품을 잘라 쓸 때: 부품 이름 -> 원본 이름
+SOURCE = {"orrery_sun": "orrery_parts", "orrery_earth": "orrery_parts", "orrery_base": "orrery_parts",
+          "pend_dial": "pendulum_parts", "pend_bob": "pendulum_parts"}
 CROPS = {
+    "orrery_sun": (148, 324, 496, 672),
+    "orrery_earth": (680, 382, 795, 614),
+    "orrery_base": (978, 260, 1852, 739),
+    "pend_dial": (110, 62, 984, 938),
+    "pend_bob": (1486, 462, 1560, 537),
+    "lx200": (871, 609, 1129, 948),
     "yard": (0, 0, 1430, 625),
     "ground": (5, 0, 1425, 496),     # 가장자리의 어두운 테두리선을 잘라야 이음매가 안 보임
     "roof": (10, 0, 1418, 605),
@@ -53,7 +69,7 @@ CROPS = {
 
 
 def build(name):
-    src = next(p for p in (ROOT / "art_src" / "backgrounds").glob(name + ".*"))
+    src = next(p for d in ("backgrounds", "views") for p in (ROOT / "art_src" / d).glob(SOURCE.get(name, name) + ".*"))
     a = np.array(Image.open(src).convert("RGB")).astype(np.int32)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     green = (g > r + 60) & (g > b + 60) & (g > 150)
@@ -65,7 +81,7 @@ def build(name):
         img = img.crop(CROPS[name])
     w, h = SIZES[name]
     img = img.resize((round(w * PX_PER_UNIT), round(h * PX_PER_UNIT)), Image.LANCZOS)
-    out = ROOT / "assets" / "backgrounds" / f"{name}.png"
+    out = ROOT / "assets" / src.parent.name / f"{name}.png"
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out, optimize=True)
     print(f"{name}: {img.width}×{img.height} (게임 좌표 {w}×{h})")
