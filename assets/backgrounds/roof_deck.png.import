@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bv25850yltq55"
-path="res://.godot/imported/roof_dome.png-2f6047a02b5008011077807f1719593b.ctex"
+uid="uid://dq48ulvuipq61"
+path="res://.godot/imported/roof_deck.png-5adf573a0999ef249bd0f98ea4d0a2e9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/backgrounds/roof_dome.png"
-dest_files=["res://.godot/imported/roof_dome.png-2f6047a02b5008011077807f1719593b.ctex"]
+source_file="res://assets/backgrounds/roof_deck.png"
+dest_files=["res://.godot/imported/roof_deck.png-5adf573a0999ef249bd0f98ea4d0a2e9.ctex"]
 
 [params]
 

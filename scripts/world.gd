@@ -30,7 +30,7 @@ const IN_X1 := 706.0
 const YARD_X1 := 980.0            # 이 오른쪽은 항구 (부두)
 const STAIRS_X := 330.0           # 나선 계단
 const PEND_X := 405.0             # 푸코 진자 (줄은 돔 꼭대기에서 1층까지)
-const DOME_X := 400.0
+const DOME_X := 615.0             # 옥상 오른쪽의 돔 (문 앞이 DOME_X + 10)
 const HOR := 262.0                # 1층 높이에서 본 수평선
 const SKY_K := 3.0
 const SPEED := 145.0
@@ -55,7 +55,9 @@ const OUTDOOR := {
 	"yard": Rect2(720, 193, 260, 113.6),
 	"harbor": Rect2(980, 208, 340, 170),
 	"seawall": Rect2(920, 297, 60, 120),
-	"roof_dome": Rect2(312.7, -3.8, 136.4, 77.8),      # 계단 출구(가운데 330)와 돔(가운데 402)
+	"roof_stair": Rect2(309.1, 14.4, 41.8, 61.6),      # 나선 계단 출구 (가운데 STAIRS_X)
+	"roof_deck": Rect2(40, 43.5, 84.7, 38.5),          # 서쪽 끝 해넘이 전망대 (계단은 오른쪽)
+	"dome": Rect2(534, -76.5, 182.7, 152.5),           # 돔 (문 가운데 = DOME_X + 10)
 }
 const ROOF_TILE := Rect2(0, -16.4, 256, 110)            # 옥상 바닥·난간 한 조각 (x는 이어 붙이며 정함)
 ## 천문대 외벽: 플레이어가 건물 밖에 있으면 보이고, 안으로 들어가면 서서히 투명해져 방 안이 보입니다
@@ -70,6 +72,8 @@ const SEAWALL_W := 60.0                      # 마당 끝 바닷가 돌 축대 �
 const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
+const DECK_UP := 15.0                      # 해넘이 전망대 바닥이 옥상보다 높은 만큼
+const DECK_STAIR := Vector2(106, 127)      # 전망대 계단: 이 x에서 다 올라감 ~ 이 x에서 옥상 바닥
 const WORKBENCH_UP := 50.0          # 창고 그림 속 작업대 윗면 높이 (바닥에서)
 ## 벽시계: 배경 이름 -> (방 왼쪽 위에서의 위치 x, y, 반지름) — 바늘은 게임 시각에 맞춰 그림
 const CLOCKS := {"office": Vector3(130.6, 23.1, 5.5), "lecture": Vector3(115.0, 31.9, 5.7)}
@@ -96,8 +100,8 @@ const SPOTS := [
 	{"id": "drawing", "floor": 1, "x": 538.0, "label": "판서 그림: 이집트 사람들의 하늘"},
 	{"id": "kids", "floor": 1, "x": 632.0, "label": "잠든 친구들"},
 	# 3층 옥상
-	{"id": "sunset", "floor": 2, "x": 70.0, "label": "서쪽 하늘 바라보기 (해넘이)"},
-	{"id": "telescope", "floor": 2, "x": 180.0, "label": "망원경으로 북쪽 하늘 보기"},
+	{"id": "sunset", "floor": 2, "x": 70.0, "label": "전망대에서 서쪽 하늘 바라보기 (해넘이)"},
+	{"id": "telescope", "floor": 2, "x": 182.0, "label": "관측 의자에 누워 북쪽 하늘 보기"},
 	{"id": "stairs", "floor": 2, "x": STAIRS_X, "label": "나선 계단"},
 	{"id": "dome", "floor": 2, "x": DOME_X + 10.0, "label": "돔 안의 큰 망원경"},
 ]
@@ -189,6 +193,8 @@ func floor_y(f: int) -> float:
 
 ## 서 있는 높이: 2층에서 가운데 홀을 지날 때는 홀 그림 속 다리 위
 func ground_y(f: int, x: float) -> float:
+	if f == 2 and x < DECK_STAIR.y:                                     # 해넘이 전망대 위 (오른쪽 계단으로 오르내림)
+		return FLOOR_Y[2] - DECK_UP * clampf((DECK_STAIR.y - x) / (DECK_STAIR.y - DECK_STAIR.x), 0.0, 1.0)
 	if f == 1 and x > HALL_X0 + 6 and x < HALL_X1 - 6:
 		return FLOOR_Y[1] - BRIDGE_UP
 	return FLOOR_Y[f]
@@ -434,11 +440,20 @@ func _night_tint() -> Color:
 	return Color.WHITE.lerp(Color(0.5, 0.48, 0.66), Astro.darkness(Game.minutes))
 
 
+## 그림 하나를 바닥 가운데(feet) 기준으로 그리기 (OUTDOOR에 자리가 없는 소품용)
+func _draw_outdoor_at(name: String, feet: Vector2) -> void:
+	if not _bg_tex.has(name):
+		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
+	var t: Texture2D = _bg_tex[name]
+	var sz := Vector2(t.get_width(), t.get_height()) / (168.0 / 40.0)
+	draw_texture_rect(t, Rect2(feet - Vector2(sz.x / 2.0, sz.y), sz), false)
+
+
 ## 바깥 그림 배경 하나 그리기
 func _draw_outdoor(name: String) -> void:
 	if not _bg_tex.has(name):
 		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
-	draw_texture_rect(_bg_tex[name], OUTDOOR[name], false, Color.WHITE if name == "roof_dome" else _night_tint())
+	draw_texture_rect(_bg_tex[name], OUTDOOR[name], false, Color.WHITE if name.begins_with("roof") or name == "dome" else _night_tint())
 
 
 ## 항구: 부두, 연락선, 쌍안경, 돌쇠의 배
@@ -589,8 +604,12 @@ func _draw_roof(font: Font, f2: float) -> void:
 		var src := Rect2(0, 0, tex.get_width() * w / ROOF_TILE.size.x, tex.get_height())
 		draw_texture_rect_region(tex, Rect2(x, ROOF_TILE.position.y, w, ROOF_TILE.size.y), src)
 		x += w
-	_draw_outdoor("roof_dome")
-	_prop("telescope", Vector2(180, f2))                                # 북쪽 하늘 망원경
+	_draw_outdoor("dome")
+	_draw_outdoor("roof_stair")
+	_draw_outdoor("roof_deck")
+	for cx in [168.0, 198.0]:                                          # 맨눈으로 북쪽 하늘을 보는 의자
+		_draw_outdoor_at("roof_chair", Vector2(cx, f2))
+	_prop("telescope", Vector2(470, f2))                                # 달을 보는 망원경
 
 
 ## 관측 장치·소품 그림 (props 시트). feet: 바닥 가운데
