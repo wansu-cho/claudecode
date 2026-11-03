@@ -1,7 +1,7 @@
 """웹 내보내기 결과(build/web)를 인터넷에 올리기 좋게 정리합니다.
 
 - index.wasm(약 38MB)을 gzip으로 압축해 engine.wasm(약 9MB)으로 만듭니다.
-- index.pck(게임 데이터)는 gamedata.wasm이라는 이름으로 복사합니다.
+- index.pck(게임 데이터)도 gzip으로 압축해 gamedata.wasm으로 만듭니다.
   (아티팩트는 .gz, .pck 파일을 올릴 수 없고 .wasm은 올릴 수 있기 때문입니다)
 - index.html에 작은 스크립트를 넣어, 브라우저가 index.wasm / index.pck를 요청하면
   위 파일을 대신 받고, gzip이면 브라우저 안에서 압축을 풀도록 합니다.
@@ -68,8 +68,9 @@ def main() -> None:
         if f.name == "index.wasm":
             with open(f, "rb") as src, gzip.open(DST / "engine.wasm", "wb", compresslevel=9) as dst:
                 shutil.copyfileobj(src, dst)
-        elif f.name == "index.pck":
-            shutil.copy(f, DST / "gamedata.wasm")
+        elif f.name == "index.pck":          # 글꼴 등이 잘 줄어들어 gzip으로 압축 (올리는 파일 한도 16MB)
+            with open(f, "rb") as src, gzip.open(DST / "gamedata.wasm", "wb", compresslevel=9) as dst:
+                shutil.copyfileobj(src, dst)
         elif f.name == "index.html":
             html = f.read_text(encoding="utf-8")
             html = html.replace('<script src="index.js"></script>', SHIM + '\t\t<script src="index.js"></script>', 1)
