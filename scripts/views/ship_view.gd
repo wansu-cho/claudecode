@@ -12,11 +12,14 @@ const DEPART := "19:30"
 const SPEED_KM_MIN := 0.25        # 분당 0.25 km = 시속 15 km
 const EYE_HORIZON_KM := 6.18      # 눈높이 3 m에서 수평선까지 거리
 const EARTH_R_KM := 6371.0
-const MAST_M := 16.0              # 돛대 꼭대기 불빛 높이
+const SHIP_LEN_M := 50.0          # 연락선 길이 (그림 비율로 높이가 정해짐)
+const MAST_AT := 0.32             # 돛대가 배 가운데에서 오른쪽으로 떨어진 비율 (배 길이 기준)
+const MAST_M := 14.7              # 돛대 꼭대기 불빛 높이 (그림: 길이 1559 : 높이 460)
 const CABIN_M := 7.0
 const HULL_M := 4.0
 
 var _status := ""
+var _ferry: Texture2D = load("res://assets/backgrounds/ferry.png")
 var _t := 0.0
 
 
@@ -107,39 +110,25 @@ func _draw() -> void:
 	draw_multiline_string(font, r.position + Vector2(6, 14), _status, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, Pal.SMALL, 3, Pal.TEXT)
 
 
-## 거리에 따라 작아지고, 가려진 높이만큼 수평선 아래로 잘려 보입니다.
+## 거리에 따라 작아지고, 가려진 높이만큼 수평선 아래로 잘려 보입니다. (연락선 그림, 길이 SHIP_LEN_M)
 func _draw_ship() -> void:
 	var m := Game.minutes
 	var d := distance_km(m)
 	var hid := hidden_m(d)
 	if hid >= MAST_M:
 		return
-	var px_per_m := clampf(110.0 / d, 0.6, 14.0)      # 쌍안경으로 크게 본 크기
-	var cx := 320.0
+	var tex: Texture2D = _ferry
+	var px_per_m := clampf(110.0 / d, 0.6, 10.0)      # 쌍안경으로 크게 본 크기
 	var water := HY + hid * px_per_m                   # 배가 떠 있는 물 높이 (수평선보다 아래)
-	var w := 36.0 * px_per_m / 2.0                     # 배 길이 약 36 m
-	var parts := [
-		[Rect2(cx - w, water - HULL_M * px_per_m, w * 2, HULL_M * px_per_m), Color8(40, 44, 70)],
-		[Rect2(cx - w * 0.6, water - CABIN_M * px_per_m, w * 1.2, (CABIN_M - HULL_M) * px_per_m), Color8(60, 64, 96)],
-		[Rect2(cx - 0.5, water - MAST_M * px_per_m, maxf(1.0, 0.3 * px_per_m), (MAST_M - CABIN_M) * px_per_m), Color8(70, 70, 90)],
-	]
-	for part in parts:
-		var rect: Rect2 = part[0]
-		if rect.position.y >= HY:
-			continue
-		rect.size.y = minf(rect.size.y, HY - rect.position.y)    # 수평선 아래는 잘라냄
-		draw_rect(rect, part[1])
-	# 불빛: 선체 창문(높이 2 m), 객실 창문(5.5 m), 돛대 꼭대기(16 m)
-	var lights := []
-	for i in 6:
-		lights.append([Vector2(cx - w * 0.8 + i * w * 0.32, water - 2.0 * px_per_m), Color8(255, 220, 140)])
-	for i in 4:
-		lights.append([Vector2(cx - w * 0.45 + i * w * 0.3, water - 5.5 * px_per_m), Color8(255, 230, 170)])
-	lights.append([Vector2(cx, water - MAST_M * px_per_m), Color8(255, 255, 240)])
-	for l in lights:
-		var p: Vector2 = l[0]
-		if p.y < HY - 0.5:
-			var s := maxf(1.0, px_per_m * 0.5)
-			draw_rect(Rect2(p - Vector2(s, s) / 2.0, Vector2(s, s)), l[1])
-			draw_circle(p, s * 2.0, Color(l[1], 0.2))
+	var size := Vector2(SHIP_LEN_M, MAST_M) * px_per_m
+	var top := water - size.y
+	var cx := 320.0 - size.x * MAST_AT                 # 돛대가 시야 가운데에 오게
+	if top < HY:
+		var show := minf(1.0, (HY - top) / size.y)      # 수평선 위로 보이는 비율 (위에서부터)
+		var dark := Astro.darkness(Game.minutes)
+		var tint := Color.WHITE.lerp(Color(0.55, 0.52, 0.7), dark)
+		draw_texture_rect_region(tex, Rect2(cx - size.x / 2.0, top, size.x, size.y * show),
+				Rect2(0, 0, tex.get_width(), tex.get_height() * show), tint)
+		var lamp := Vector2(cx + size.x * MAST_AT, top + size.y * 0.03)   # 돛대 꼭대기 등
+		draw_circle(lamp, maxf(2.0, px_per_m * 1.2), Color(1, 0.85, 0.5, 0.25 * dark + 0.1))
 	draw_line(Vector2(0, HY), Vector2(640, HY), Color(0.7, 0.75, 1.0, 0.35), 1)

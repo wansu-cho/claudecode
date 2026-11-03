@@ -117,7 +117,7 @@ const NPC_PLAN := {
 }
 ## 돌쇠가 배를 띄울 수 있는 마지막 시각 (물때). 북두칠성의 국자 끝 두 별은 21:55에야 산 위로 올라옵니다.
 const TIDE_END := "21:30"
-const BOAT_X := 1060.0             # 돌쇠의 배 (떠나면 오른쪽 바다로)
+const BOAT_X := 1095.0             # 돌쇠의 배 (떠나면 오른쪽 바다로)
 const FERRY_X := 1190.0            # 섬 연락선 (19:30 출항)
 const TEACHER_X := 952.0           # 프롤로그에서 선생님이 서 있는 곳 (마당)
 
@@ -441,12 +441,12 @@ func _night_tint() -> Color:
 
 
 ## 그림 하나를 바닥 가운데(feet) 기준으로 그리기 (OUTDOOR에 자리가 없는 소품용)
-func _draw_outdoor_at(name: String, feet: Vector2) -> void:
+func _draw_outdoor_at(name: String, feet: Vector2, tint := Color.WHITE) -> void:
 	if not _bg_tex.has(name):
 		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
 	var t: Texture2D = _bg_tex[name]
 	var sz := Vector2(t.get_width(), t.get_height()) / (168.0 / 40.0)
-	draw_texture_rect(t, Rect2(feet - Vector2(sz.x / 2.0, sz.y), sz), false)
+	draw_texture_rect(t, Rect2(feet - Vector2(sz.x / 2.0, sz.y), sz), false, tint)
 
 
 ## 바깥 그림 배경 하나 그리기
@@ -459,22 +459,23 @@ func _draw_outdoor(name: String) -> void:
 ## 항구: 부두, 연락선, 쌍안경, 돌쇠의 배
 func _draw_harbor() -> void:
 	var g: float = FLOOR_Y[0]
+	# 섬 연락선: 부두 건너편(뒤)에 대어 있다가 19:30에 오른쪽 먼바다로 떠남. 선체 아래는 부두에 가려짐
+	var gone := maxf(0.0, Game.minutes - Game.at("19:30")) * 30.0
+	var fx := FERRY_X + gone
+	if fx < WORLD_W + 160.0:
+		_draw_outdoor_at("ferry", Vector2(fx, g + 12), _night_tint())
+	if gone == 0.0:
+		draw_string(get_theme_default_font(), Vector2(fx - 40, g - 80), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	_draw_outdoor("harbor")
-	# 섬 연락선 (19:30에 떠남)
-	if Game.minutes < Game.at("19:30"):
-		var fx := FERRY_X
-		var fy := g + 44                                           # 물 위 (부두 앞)
-		_prop2("ferry", Vector2(fx, fy), "", "boats")
-		draw_string(get_theme_default_font(), Vector2(fx - 40, fy - 104), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	_prop("binoculars", Vector2(1296, g))                           # 부두 쌍안경 (부두 끝)
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
-		if boat_x < WORLD_W + 60:
+		if boat_x < WORLD_W + 100:
 			var bob := sin(_t * 1.5) * 1.5
 			var bx := boat_x
-			var by := g + 44 + bob
+			var by := g + 44 + bob                                  # 물 닿는 선 (부두 앞)
 			if Game.night.get("sailing", false):                          # 북극성을 가리키며 떠남 (뱃전이 발을 가림)
-				SheetSprite.named("dolsoe").draw(self, "point", 0, Vector2(bx - 30, by - 6), false, CHAR_H)
-			_prop2("boat", Vector2(bx, by), "", "boats")
+				SheetSprite.named("dolsoe").draw(self, "point", 0, Vector2(bx - 28, by - 17), false, CHAR_H)
+			_draw_outdoor_at("boat", Vector2(bx, by), _night_tint())
 
 
 func _draw_building() -> void:
