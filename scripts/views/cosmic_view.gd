@@ -67,7 +67,10 @@ func _draw() -> void:
 			draw_circle(c, 70 / zoom, Color8(40, 100, 190))
 			draw_circle(c + Vector2(-18, -14) / zoom, 26 / zoom, Color8(80, 160, 90))
 			draw_circle(c + Vector2(22, 20) / zoom, 18 / zoom, Color8(80, 160, 90))
-			draw_arc(c, 70 / zoom, -PI / 2.0, PI / 2.0, 24, Color(0, 0, 0.1, 0.5), 30 / zoom)
+			var night := PackedVector2Array([c])           # 태양 반대쪽(오른쪽) 절반은 밤
+			for i in 17:
+				night.append(c + Vector2.from_angle(-PI / 2.0 + PI * i / 16.0) * 70 / zoom)
+			draw_colored_polygon(night, Color(0, 0, 0.1, 0.55))
 		1:
 			draw_circle(c, 12, Color8(255, 200, 80))
 			for k in 8:

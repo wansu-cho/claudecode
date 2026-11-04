@@ -483,9 +483,9 @@ func _true_ending() -> void:
 	await _fade(func():
 		_close_overlay()
 		world.start_morning()
-		Game.minutes = Game.NIGHT_LEN - 12.0)
-	var tw := create_tween()                             # 이번에는 시간이 앞으로 흐름 (해가 떠오름)
-	tw.tween_method(func(v: float): Game.minutes = v, Game.NIGHT_LEN - 12.0, Game.NIGHT_LEN + 20.0, 6.0)
+		Game.minutes = Game.NIGHT_LEN - 4.0)
+	var tw := create_tween()                             # 이번에는 시간이 앞으로 흐름 (해가 떠올라 환해짐)
+	tw.tween_method(func(v: float): Game.minutes = v, Game.NIGHT_LEN - 4.0, Game.NIGHT_LEN + 70.0, 9.0)
 	await dialogue.say(Story.ENDING_DAWN.slice(0, 4))
 	world.morning_face = true
 	await dialogue.say(Story.ENDING_DAWN.slice(4, Story.ENDING_DAWN.size() - 1))
