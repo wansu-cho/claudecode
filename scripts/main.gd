@@ -224,7 +224,7 @@ func _on_interact(id: String) -> void:
 	match id:
 		"bench": await _bench()
 		"stairs": await _stairs()
-		"b1door": await _b1door()
+		"shelf": await _shelf()
 		"comic", "mapbook", "sundial", "drawing", "photo", "globe": await _artifact(id)
 		"telescope": _open(SkyScript.new())
 		"sunset": _open(SunsetScript.new())
@@ -273,11 +273,19 @@ func _kids() -> void:
 	await dialogue.say([["", Story.KIDS[i % Story.KIDS.size()]]])
 
 
-func _b1door() -> void:
-	await dialogue.say([
-		["", "지하로 내려가는 무거운 문이다. 손잡이 위에 별 모양 홈 일곱 개가 둥글게 파여 있다."],
-		["", "홈 %d개가 금빛으로 빛나고 있다. 문은 아직 꿈쩍도 하지 않는다." % Game.pieces()],
-	])
+## 책방 비밀 책장: 손님 여섯 명을 모두 도우면 밀려 열리고 지하 계단이 드러납니다
+func _shelf() -> void:
+	if world.shelf == 2:
+		await dialogue.say([["", "책장 뒤로 어두운 돌계단이 아래로 이어진다. 희미한 금빛이 새어 나온다."],
+				["", "(별지기의 방은 다음 판에서 열립니다)"]])
+		return
+	if Game.pieces() < 6:
+		await dialogue.say([["", "…책장이 흔들린다."], ["", "책장 뒤에서 차가운 바람이 새어 나오는 것 같다."]])
+		return
+	world.shelf = 1
+	await get_tree().create_timer(0.6).timeout
+	world.shelf = 2
+	await dialogue.say([["", "책장이 움직인다…!"], ["", "책장 뒤로 아래로 내려가는 돌계단이 나타났다."]])
 
 
 ## 화면을 잠깐 어둡게 했다가 밝히며, 그 사이에 할 일을 합니다.

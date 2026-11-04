@@ -42,12 +42,14 @@ SIZES = {
     "pend_bob": (20, 20),
     "lx200": (46.9, 61.6),       # 돔 안의 망원경 (게임 좌표)
     "m42": (300, 300),           # 16인치로 본 오리온대성운 (검은 배경, 더하기 합성)
+    "shelf_half": (54.0, 58.5),  # 책방 비밀 책장: 반쯤 밀림 (뒤에 지하 계단 입구)
+    "shelf_open": (71.1, 58.5),  # 책방 비밀 책장: 다 열림
     "boat": (175.3, 123.6),      # 돌쇠의 배 (아래 끝 = 물 닿는 선)
     "ferry": (283.5, 83.6),      # 섬 연락선
 }
 ## 원본에서 잘라 쓸 부분 (왼쪽, 위, 오른쪽, 아래) — 옥상은 난간 기둥 가운데에서 잘라야 이음매가 맞음
 ## 한 원본 그림에서 여러 부품을 잘라 쓸 때: 부품 이름 -> 원본 이름
-SOURCE = {"orrery_sun": "orrery_parts", "orrery_earth": "orrery_parts", "orrery_base": "orrery_parts",
+SOURCE = {"shelf_half": "secret_shelf", "shelf_open": "secret_shelf","orrery_sun": "orrery_parts", "orrery_earth": "orrery_parts", "orrery_base": "orrery_parts",
           "pend_dial": "pendulum_parts", "pend_bob": "pendulum_parts"}
 CROPS = {
     "orrery_sun": (148, 324, 496, 672),
@@ -64,6 +66,8 @@ CROPS = {
     "roof_chair": (1207, 833, 1366, 948),
     "dome": (497, 110, 1502, 949),
     "boat": (518, 168, 1482, 848),
+    "shelf_half": (803, 627, 1100, 949),
+    "shelf_open": (1469, 627, 1860, 949),
     "ferry": (220, 388, 1779, 848),
 }
 

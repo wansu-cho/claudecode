@@ -245,11 +245,15 @@ func _run() -> void:
 	_key(KEY_1)                                      # 계속 둘러보기
 	await _frames(3)
 
-	# 13) 지하 문: 조각 6개
+	# 13) 책방 비밀 책장: 손님 여섯 명을 다 도우면 열림
 	w.go_floor(0)
-	w.player_x = w.spot_x("b1door")
+	w.player_x = w.spot_x("shelf")
 	await _frames(4)
-	await _shot("b1door")
+	_check(game.pieces() >= 6, "책장이 열릴 조건: 손님 여섯 명")
+	w.shelf = 2                                      # 책장이 다 밀려 열린 모습
+	await _frames(4)
+	await _shot("shelf")
+	w.shelf = 0
 
 	# 14) 해돋이 → 되감기 → 두 번째 밤 (주인공은 아직 모름) → 19:00에 알아챔
 	game.minutes = game.NIGHT_LEN - 0.2

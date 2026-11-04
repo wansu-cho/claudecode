@@ -40,8 +40,9 @@ const NPC_SPEED := 55.0
 const REACH := 24.0
 const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새 그림(시트)은 이 키로 그림
 const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
-## 지하 문의 별 모양 홈: (고리 반지름, 문 바닥에서 고리 가운데까지 높이) — 게임 좌표
-const DOOR_RING := Vector2(6.1, 36.8)
+## 책방 맨 왼쪽 책장 = 지하로 가는 비밀 책장 (책방 그림 속 책장 가운데 x)
+const SHELF_X := 486.0
+const SHELF_POS := Vector2(468.7, 216.2)   # 책장이 밀린 그림(입구 돌벽)의 왼쪽 위
 ## 그림 배경이 있는 방: 이름 -> 게임 속 자리 (그림 바닥 쪽 8칸은 바닥판 아래로 들어감)
 const BACKGROUNDS := {
 	"office": Rect2(40, 88, 260, 110),
@@ -83,7 +84,7 @@ const SPOTS := [
 	# 1층: 창고 · 가운데 홀 · 책방 · 바깥
 	{"id": "orrery", "floor": 0, "x": 95.0, "label": "지구 공전 모형"},
 	{"id": "sundial", "floor": 0, "x": 175.0, "label": "만들기 실습: 종이 앙부일구"},
-	{"id": "b1door", "floor": 0, "x": 262.0, "label": "지하로 내려가는 문"},
+	{"id": "shelf", "floor": 0, "x": SHELF_X, "label": "책장 살펴보기"},
 	{"id": "stairs", "floor": 0, "x": STAIRS_X, "label": "나선 계단"},
 	{"id": "pendulum", "floor": 0, "x": PEND_X, "label": "푸코 진자 살펴보기"},
 	{"id": "books", "floor": 0, "x": 514.0, "label": "안락의자에 앉아 교재 읽기"},
@@ -135,7 +136,8 @@ var nearest := ""
 var npc := {}                     # 등장인물 id -> 지금 위치 (x, 층)
 var boat_x := BOAT_X
 var ext_alpha := 1.0                 # 외벽 불투명도 (밖 1 → 안 0)
-var has_lantern := true              # 프롤로그에서 선생님이 손전등을 건네기 전에는 false
+var has_lantern := true
+var shelf := 0                       # 비밀 책장: 0 닫힘(책방 그림 그대로), 1 반쯤 밀림, 2 다 열림              # 프롤로그에서 선생님이 손전등을 건네기 전에는 false
 var cam := Vector2.ZERO
 var land_t := 9.0                 # 착지한 뒤 지난 시간 (착지 자세를 잠깐 보여 줌)
 var _npc_prev := {}               # 사람마다 지난 프레임 위치 (걷는지 알아보려고)
@@ -163,6 +165,7 @@ func reset_night() -> void:
 	for id in NPC_PLAN:
 		npc[id] = Vector2(spot_x(NPC_PLAN[id]["home"]), spot_floor(NPC_PLAN[id]["home"]))
 	boat_x = BOAT_X
+	shelf = 0
 	facing = 1
 	_snap_camera()
 
@@ -544,12 +547,6 @@ func _draw_storage(f0: float) -> void:
 	var top := f0 - WORKBENCH_UP
 	_prop2("dial", Vector2(175, top), "bori")
 	_glow_if_freed("bori", Rect2(162, top - 14, 26, 16))
-	_prop("door", Vector2(262, f0))                                     # 지하로 가는 문
-	for i in 7:                                                         # 문 위 별 모양 홈 7개: 모은 조각만큼 빛남
-		if i < Game.pieces():
-			var hole := Vector2(262, f0 - DOOR_RING.y) + Vector2.from_angle(-PI / 2.0 + TAU * i / 7.0) * DOOR_RING.x
-			draw_circle(hole, 2.2, Pal.GOLD)
-			draw_circle(hole, 5.0, Color(1, 0.84, 0.4, 0.25 + 0.1 * sin(_t * 2.0 + i)))
 
 
 ## 가운데 홀: 돔 꼭대기에서 1층까지 내려온 푸코 진자
@@ -563,6 +560,14 @@ func _draw_hall(f0: float, f2: float) -> void:
 
 ## 1층 책방 (책장과 안락의자는 배경 그림): 교재 펼친 쪽(이나), 그리스로마신화 만화책(테오)
 func _draw_bookshop(font: Font, f0: float) -> void:
+	if shelf > 0:                                                      # 비밀 책장이 오른쪽으로 밀려 지하 계단 입구가 드러남
+		var nm := "shelf_half" if shelf == 1 else "shelf_open"
+		if not _bg_tex.has(nm):
+			_bg_tex[nm] = load("res://assets/backgrounds/%s.png" % nm)
+		var t: Texture2D = _bg_tex[nm]
+		draw_texture_rect(t, Rect2(SHELF_POS, Vector2(t.get_width(), t.get_height()) / (168.0 / 40.0)), false)
+	elif Game.pieces() >= 6:                                           # 모두 모으면 책장이 반짝임
+		_glow_if_freed("bori", Rect2(SHELF_X - 18, f0 - 70, 36, 60))
 	_prop2("mapbook", Vector2(580, f0), "ina")                            # 교재 펼친 쪽: 옛사람들의 세계 지도
 	_glow_if_freed("ina", Rect2(564, f0 - 36, 32, 36))
 	_prop2("comic", Vector2(655, f0), "teo")                              # 그리스로마신화 만화책 진열대
