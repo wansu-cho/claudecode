@@ -139,7 +139,11 @@ var npc := {}                     # 등장인물 id -> 지금 위치 (x, 층)
 var boat_x := BOAT_X
 var ext_alpha := 1.0                 # 외벽 불투명도 (밖 1 → 안 0)
 var has_lantern := true
-var shelf := 0                       # 비밀 책장: 0 닫힘(책방 그림 그대로), 1 반쯤 밀림, 2 다 열림              # 프롤로그에서 선생님이 손전등을 건네기 전에는 false
+var shelf := 0
+var _step_t := 0.0
+var morning := false                 # 진엔딩 아침: 마당의 선생님이 해를 마주 봄
+var morning_face := false            # 얼굴이 보이기 시작 (실루엣이 아님)
+var teacher_pose := "idle"                       # 비밀 책장: 0 닫힘(책방 그림 그대로), 1 반쯤 밀림, 2 다 열림              # 프롤로그에서 선생님이 손전등을 건네기 전에는 false
 var cam := Vector2.ZERO
 var land_t := 9.0                 # 착지한 뒤 지난 시간 (착지 자세를 잠깐 보여 줌)
 var _npc_prev := {}               # 사람마다 지난 프레임 위치 (걷는지 알아보려고)
@@ -170,6 +174,22 @@ func reset_night() -> void:
 	shelf = 0
 	facing = 1
 	_snap_camera()
+
+
+## 진엔딩 아침: 마당에서 선생님을 마주함
+func start_morning() -> void:
+	morning = true
+	morning_face = false
+	teacher_pose = "idle"
+	floor_i = 0
+	player_x = TEACHER_X - 34.0
+	facing = 1
+	_snap_camera()
+
+
+func end_morning() -> void:
+	morning = false
+	morning_face = false
 
 
 ## 프롤로그: 항구의 연락선 옆에서 시작합니다.
@@ -267,6 +287,10 @@ func _process(delta: float) -> void:
 		if absf(dir) > 0.05:
 			facing = 1 if dir > 0 else -1
 			walk_t += delta
+			_step_t -= delta
+			if _step_t <= 0.0 and y_off == 0.0:              # 걸을 때 발소리
+				_step_t = 0.3
+				Sfx.play("step", -14.0)
 			var lo := B_X1 + 14.0 if prologue else IN_X0
 			var hi := WORLD_W - 12.0 if floor_i == 0 else IN_X1
 			player_x = clampf(player_x + dir * SPEED * delta, lo, hi)
@@ -668,6 +692,11 @@ func _draw_people() -> void:
 		var near := absf(player_x - TEACHER_X) < 90.0          # 가까이 오면 손을 흔듦
 		t_sp.draw(self, "wave" if near else "idle", 0 if near else t_sp.frame_at("idle", _t), tf, player_x < TEACHER_X,
 				CHAR_H, Color(0.16, 0.13, 0.22))                # 해를 등져 얼굴이 보이지 않는 실루엣
+	elif morning:                                                   # 진엔딩 아침: 해를 마주 봐 얼굴이 보임
+		var tm := SheetSprite.named("teacher")
+		var pose := teacher_pose if tm.has_anim(teacher_pose) else "idle"
+		var tint := Color.WHITE if morning_face else Color(0.45, 0.4, 0.5)
+		tm.draw(self, pose, 0 if pose != "idle" else tm.frame_at("idle", _t), Vector2(TEACHER_X, floor_y(0)), true, CHAR_H, tint)
 	_draw_exterior()                                                # 밖에서는 외벽이 건물 안(방, 사람)을 가림
 	var gy := ground_y(floor_i, player_x) - (4 if floor_i == 0 and _on_pier() else 0)
 	if y_off < 0.0:

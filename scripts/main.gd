@@ -11,6 +11,8 @@ extends Control
 const WorldScript := preload("res://scripts/world.gd")
 const QuizScript := preload("res://scripts/ui/quiz_view.gd")
 const MoonScript := preload("res://scripts/views/moon_view.gd")
+const RoomScript := preload("res://scripts/views/starkeeper_view.gd")
+const CosmicScript := preload("res://scripts/views/cosmic_view.gd")
 const HudScript := preload("res://scripts/ui/hud.gd")
 const PadScript := preload("res://scripts/ui/touch_pad.gd")
 const DialogueScript := preload("res://scripts/ui/dialogue_box.gd")
@@ -84,6 +86,7 @@ func _title() -> void:
 
 
 func _begin_night(first_of_session: bool) -> void:
+	Sfx.ambience(true)                                  # 섬의 밤바다 소리
 	var first := Game.loop == 1 and Game.facts.is_empty()
 	if first:
 		await _prologue()
@@ -308,26 +311,29 @@ func _kids() -> void:
 ## 책방 비밀 책장: 손님 여섯 명을 모두 도우면 밀려 열리고 지하 계단이 드러납니다
 func _shelf() -> void:
 	if world.shelf == 2:
-		await dialogue.say([["", "책장 뒤로 어두운 돌계단이 아래로 이어진다. 희미한 금빛이 새어 나온다."],
-				["", "(별지기의 방은 다음 판에서 열립니다)"]])
+		var go: int = await dialogue.choose(["돌계단을 내려간다", "그만두기"], "책장 뒤로 어두운 돌계단이 아래로 이어진다.")
+		if go == 0:
+			await _true_ending()
 		return
 	if Game.pieces() < 6:
 		await dialogue.say([["", "…책장이 흔들린다."], ["", "책장 뒤에서 차가운 바람이 새어 나오는 것 같다."]])
 		return
-	await dialogue.say(Story.SHELF_QUIZ)
-	var q := QuizScript.new(Story.SUMMARY)              # 교재 179쪽 '한 장 정리'
-	add_child(q)
-	quiz = q
-	await q.done
+	if not Game.predicted.has("_summary"):               # 교재 179쪽 '한 장 정리' (한 번 풀면 다음 밤엔 생략)
+		await dialogue.say(Story.SHELF_QUIZ)
+		var q := QuizScript.new(Story.SUMMARY)
+		add_child(q)
+		quiz = q
+		await q.done
+		Game.predicted["_summary"] = "done"
+		Game.save()
+	Sfx.play("shelf", -2.0)
 	world.shelf = 1
 	await get_tree().create_timer(0.6).timeout
 	world.shelf = 2
 	await dialogue.say(Story.SHELF_OPEN)
-	var pick: int = await dialogue.choose(["계속 둘러보기", "처음부터 다시"])
-	if pick == 1:
-		Game.new_game()
-		_close_overlay()
-		await _begin_night(false)
+	var go: int = await dialogue.choose(["돌계단을 내려간다", "나중에"])
+	if go == 0:
+		await _true_ending()
 
 
 ## 화면을 잠깐 어둡게 했다가 밝히며, 그 사이에 할 일을 합니다.
@@ -365,6 +371,7 @@ func _artifact(spot: String) -> void:
 	var text: String = Story.SLEEPING[spot]
 	if state == "dormant" and who != "":
 		await dialogue.say([["", text], ["", Story.WAKE_FROM]])
+		Sfx.play("wake", -4.0)
 		Game.night["woke_" + who] = true              # 물건 속 손님이 깨어나 나옴 (깨어나는 동작)
 		Game.woken[who] = true
 		Game.save()
@@ -461,9 +468,42 @@ func _hearts(n: int) -> String:
 
 
 ## 해돋이 → 17:00: 하늘과 시계가 거꾸로 빠르게 감깁니다.
+## 진엔딩: 별지기의 방 → 일곱 번째 조각 → 우주 주소 → 되감기지 않는 아침 → 어른이 된 나
+func _true_ending() -> void:
+	Game.running = false
+	Game.freeze()
+	var room := RoomScript.new()                          # (람다 안에서 바깥 변수에 넣으면 복사본에 들어가므로 미리 만듦)
+	await _fade(func(): _open(room))
+	await dialogue.say(Story.ENDING_ROOM.slice(0, Story.ENDING_ROOM.size() - 1))
+	room.piece = true
+	await dialogue.say(Story.ENDING_ROOM.slice(Story.ENDING_ROOM.size() - 1))
+	var cosmos := CosmicScript.new()
+	await _fade(func(): _open(cosmos))
+	await cosmos.done
+	await _fade(func():
+		_close_overlay()
+		world.start_morning()
+		Game.minutes = Game.NIGHT_LEN - 12.0)
+	var tw := create_tween()                             # 이번에는 시간이 앞으로 흐름 (해가 떠오름)
+	tw.tween_method(func(v: float): Game.minutes = v, Game.NIGHT_LEN - 12.0, Game.NIGHT_LEN + 20.0, 6.0)
+	await dialogue.say(Story.ENDING_DAWN.slice(0, 4))
+	world.morning_face = true
+	await dialogue.say(Story.ENDING_DAWN.slice(4, Story.ENDING_DAWN.size() - 1))
+	world.teacher_pose = "skyward"
+	await dialogue.say(Story.ENDING_DAWN.slice(Story.ENDING_DAWN.size() - 1))
+	var card := CardScript.new("별지기의 마지막 밤 · 끝", Story.ENDING_CARD, ["처음부터 다시"])
+	add_child(card)
+	await card.done
+	Game.unfreeze()
+	Game.new_game()
+	world.end_morning()
+	await _begin_night(false)
+
+
 ## 해가 뜨면 밤이 되감깁니다: 하늘의 해·달·별과 시계가 거꾸로 돌고,
 ## 위에 거꾸로 그려지는 일주 사진(긴 호가 점점 짧아져 점으로 돌아감)이 겹칩니다.
 func _rewind() -> void:
+	Sfx.play("rewind", -4.0)
 	var trails := RewindFx.new()
 	add_child(trails)
 	var tw := create_tween()

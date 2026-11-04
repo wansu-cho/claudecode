@@ -167,6 +167,31 @@ static func field() -> Array:
 	return _field
 
 
+## 은하수: 은하 적도(은위 0°)를 따라 흩어진 희미한 점들 [적경(시), 적위(도), 밝기]
+##   은위는 가우스 분포(폭 약 7°), 은경은 은하 중심(궁수자리) 쪽이 더 밝게. 은하 좌표 → 2000년 적도 좌표 → 세차
+##   북은극 적경 192.859°, 적위 27.128°, 천구 북극의 은경 122.932° (IAU)
+static var _milky: Array = []
+
+
+static func milky_way() -> Array:
+	if _milky.is_empty():
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 1987
+		var a_ngp := deg_to_rad(192.85948)
+		var d_ngp := deg_to_rad(27.12825)
+		var l_ncp := deg_to_rad(122.93192)
+		for i in 2200:
+			var l := rng.randf() * TAU
+			var b := deg_to_rad(clampf(rng.randfn(0.0, 6.5), -25.0, 25.0))
+			var core := 0.45 + 0.55 * pow(0.5 + 0.5 * cos(l), 2.0)        # 은하 중심(은경 0°) 쪽이 밝음
+			var sd := sin(d_ngp) * sin(b) + cos(d_ngp) * cos(b) * cos(l_ncp - l)
+			var dec := asin(clampf(sd, -1.0, 1.0))
+			var ra := a_ngp + atan2(cos(b) * sin(l_ncp - l), cos(d_ngp) * sin(b) - sin(d_ngp) * cos(b) * cos(l_ncp - l))
+			var pr := precess(fposmod(rad_to_deg(ra), 360.0) / 15.0, rad_to_deg(dec))
+			_milky.append([pr.x, pr.y, core * rng.randf_range(0.3, 1.0) * (1.0 - absf(b) / deg_to_rad(25.0))])
+	return _milky
+
+
 ## 밤하늘이 얼마나 어두운지 (0 = 낮, 1 = 완전한 밤)
 static func darkness(game_min: float) -> float:
 	return clampf((-sun_alt(game_min) - 2.0) / 12.0, 0.0, 1.0)

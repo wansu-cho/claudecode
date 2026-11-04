@@ -120,6 +120,7 @@ func dismiss() -> void:
 			await quiz_runner.call(_fact)
 		_card.queue_free()
 		_card = _make_card("★  깨달음!  ★", f["title"], f["aha"], "관측 일지에 기록 · 눌러서 계속", Pal.GOLD)
+		Sfx.play("aha", -4.0)
 		_pop_in()
 		return
 	_waiting = false

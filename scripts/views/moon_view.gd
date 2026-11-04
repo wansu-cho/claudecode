@@ -88,6 +88,7 @@ func take_photo() -> void:
 	if not _photos.is_empty() and m - float(_photos[-1]["m"]) < PHOTO_GAP:
 		_say("앞 사진과 시간이 너무 가깝다. 그림자가 더 움직인 뒤(20분쯤 뒤)에 다시 찍자.")
 		return
+	Sfx.play("shutter", -4.0)
 	_photos.append({"m": m})
 	if _photos.size() < PHOTOS_NEEDED:
 		_say("찰칵! %s, 그림자의 가장자리는 둥근 곡선이다. (사진 %d/%d)" % [Game.clock(m), _photos.size(), PHOTOS_NEEDED])

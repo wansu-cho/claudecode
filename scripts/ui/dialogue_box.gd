@@ -93,7 +93,9 @@ func choose(options: Array, question := "") -> int:
 	for i in options.size():
 		var b := Pal.button(options[i])
 		b.custom_minimum_size = Vector2(260, 22)
-		b.pressed.connect(func(): _picked.emit(i))
+		b.pressed.connect(func():
+			Sfx.play("click", -8.0)
+			_picked.emit(i))
 		_choices.add_child(b)
 	_choices.position = Vector2(364, (256 if question != "" else 330) - options.size() * 26)
 	var picked: int = await _picked
@@ -117,6 +119,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if _waiting and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_E]:
 			get_viewport().set_input_as_handled()
+			Sfx.play("click", -10.0)
 			_next.emit()
 		elif not _waiting and event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			var n: int = event.keycode - KEY_1

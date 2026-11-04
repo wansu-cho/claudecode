@@ -48,6 +48,7 @@ func _ready() -> void:
 
 func open_page(i: int) -> void:
 	page_i = i
+	Sfx.play("page", -8.0)
 	_title.text = Story.BOOK[i]["title"]
 	_page.text = Story.BOOK[i]["text"]
 	var path := "res://assets/views/book_%d.png" % (i + 1)

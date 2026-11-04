@@ -270,7 +270,7 @@ func _run() -> void:
 	await _solve_quizzes()                           # 교재 179쪽 '한 장 정리'
 	await _wait(0.8)
 	await _advance()
-	_key(KEY_1)                                      # 계속 둘러보기
+	_key(KEY_2)                                      # 나중에 내려가기
 	await _frames(3)
 	_check(w.shelf == 2, "책장이 열림")
 	await _shot("shelf")
@@ -305,6 +305,34 @@ func _run() -> void:
 	_check(game.realized, "루프를 알아챔")
 	_check(game.freed.size() == 6, "여섯 명 모두 귀환 유지")
 	await _shot("loop2")
+
+	# 15) 진엔딩: 책장 → 별지기의 방 → 우주 주소 → 아침의 선생님
+	w.go_floor(0)
+	w.player_x = w.spot_x("shelf")
+	await _frames(3)
+	main._on_interact("shelf")                       # 한 장 정리는 이미 풀었으니 바로 열림
+	await _wait(1.0)
+	await _advance()
+	_key(KEY_1)                                      # 돌계단을 내려간다
+	await _wait(0.8)
+	await _advance()
+	await _wait(0.5)
+	await _shot("ending_room")
+	await _advance()
+	await _wait(0.8)
+	for i in 7:                                      # 우주 주소 일곱 단계
+		if i == 3:
+			await _shot("ending_cosmos")
+		_key(KEY_ENTER)
+		await _wait(0.6)
+	await _wait(0.8)
+	await _advance()
+	await _shot("ending_teacher")
+	await _advance()
+	await _wait(0.5)
+	await _advance()
+	await _shot("ending_card")
+	_check(w.morning, "진엔딩 아침")
 	print("AUTOPLAY OK: loop=%d facts=%d freed=%s" % [game.loop, game.facts.size(), str(game.freed.keys())])
 	quit(0)
 

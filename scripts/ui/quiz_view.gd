@@ -80,6 +80,7 @@ func pick(i: int) -> void:
 		_finish(st["opts"][i])
 		return
 	if i == int(st["a"]):
+		Sfx.play("correct", -6.0)
 		_locked = true
 		_msg = "맞아!  " + st.get("ok", "")
 		_msg_col = Pal.GOLD
@@ -93,6 +94,7 @@ func pick(i: int) -> void:
 			_show_step()
 		return
 	_tries += 1
+	Sfx.play("wrong", -8.0)
 	var why: Dictionary = st.get("why", {})
 	var lines := []
 	if why.has(i):

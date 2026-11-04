@@ -83,6 +83,18 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 		y += 2
 
 	var out := {}
+	if dark > 0.3:                       # 은하수: 아주 어두울 때만, 보름달 빛에는 거의 묻힘 (개기식 동안 다시 보임)
+		var mw := (dark - 0.3) / 0.7 * (1.0 - 0.85 * moon)
+		if mw > 0.03:
+			for s in Astro.milky_way():
+				var aa := Astro.altaz(s[0], s[1], m)
+				if aa.x <= 2.0 or Astro.hidden(aa):
+					continue
+				var p := project(aa, pr)
+				if p.x < 0 or p.x >= size.x or p.y < 0:
+					continue
+				var big := 2.0 if k > 3.5 else 1.0
+				ci.draw_rect(Rect2(p.floor(), Vector2(big, big)), Color(0.78, 0.8, 0.95, 0.16 * s[2] * mw * clampf(aa.x / 15.0, 0.3, 1.0)))
 	if dark > 0.05:
 		for s in Astro.field():
 			var aa := Astro.altaz(s[0], s[1], m)
