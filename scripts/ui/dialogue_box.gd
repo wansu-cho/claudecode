@@ -80,9 +80,11 @@ func say(lines: Array) -> void:
 	Game.unfreeze()
 
 
-func choose(options: Array) -> int:
+func choose(options: Array, question := "") -> int:
 	visible = true
-	_panel.visible = false
+	_panel.visible = question != ""                  # 질문이 있으면 대사창에 질문을 띄움
+	_name.visible = false
+	_text.text = question
 	_portrait.visible = false
 	Game.freeze()
 	_hint.visible = false
@@ -93,7 +95,7 @@ func choose(options: Array) -> int:
 		b.custom_minimum_size = Vector2(260, 22)
 		b.pressed.connect(func(): _picked.emit(i))
 		_choices.add_child(b)
-	_choices.position = Vector2(364, 330 - options.size() * 26)
+	_choices.position = Vector2(364, (256 if question != "" else 330) - options.size() * 26)
 	var picked: int = await _picked
 	for c in _choices.get_children():
 		c.queue_free()

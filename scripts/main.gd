@@ -88,7 +88,6 @@ func _begin_night(first_of_session: bool) -> void:
 	if first:
 		Game.freeze()
 		await dialogue.say(Story.INTRO)
-		Game.add_fact("note")
 		Game.unfreeze()
 	elif not Game.realized:
 		# 두 번째 밤: 첫 밤과 똑같이 시작합니다. 주인공은 아직 모릅니다.
@@ -305,7 +304,7 @@ func _fade(between: Callable) -> void:
 
 
 func _note() -> void:
-	var lines := [["쪽지", Story.FACTS["note"]["text"]]]
+	var lines: Array = Story.NOTE.duplicate()
 	var hint := _hint()
 	if Game.loop > 1 and hint != "":
 		lines.append(["쪽지 뒷면", hint])
@@ -321,6 +320,12 @@ func _artifact(spot: String) -> void:
 			who = id
 	var state: String = world.npc_state(who) if who != "" else "dormant"
 	var text: String = Story.SLEEPING[spot]
+	if state == "dormant" and who != "":
+		await dialogue.say([["", text], ["", Story.WAKE_FROM]])
+		Game.night["woke_" + who] = true              # 물건 속 손님이 깨어나 나옴 (깨어나는 동작)
+		Game.woken[who] = true
+		Game.save()
+		return
 	if state == "freed":
 		text = "자료 속 조각 하나가 금빛으로 빛난다. %s는 무사히 아침으로 돌아간 것 같다." % Story.NPC[who]["name"]
 	elif state != "dormant":
@@ -446,9 +451,7 @@ func _check_prototype_end() -> void:
 
 ## 두 번째 밤에 주인공이 루프를 알아챕니다.
 func _realize() -> void:
-	_busy = true
-	Game.realized = true
-	Game.save()
+	_busy = true                                        # 맞힐 때까지는 아직 "12월 13일"로 표시 (답이 드러나지 않게)
 	var flash := ColorRect.new()
 	flash.color = Color(1, 1, 1, 0.0)
 	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -460,6 +463,16 @@ func _realize() -> void:
 	await tw.finished
 	flash.queue_free()
 	await dialogue.say(Story.REALIZE)
+	var opts: Array = []
+	for c in Story.REALIZE_CHOICES:
+		opts.append(c[0])
+	while true:                                         # 맞힐 때까지 다시 고름 (틀리면 까닭을 알려 줌)
+		var pick: int = await dialogue.choose(opts, Story.REALIZE_ASK)
+		await dialogue.say([["", Story.REALIZE_CHOICES[pick][1]]])
+		if pick == Story.REALIZE_ANSWER:
+			break
+	Game.realized = true
+	Game.save()
 	var lines: Array = Story.REALIZE_CARD.duplicate()
 	var hint := _hint()
 	if hint != "":

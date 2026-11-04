@@ -43,8 +43,17 @@ func _run() -> void:
 	await _advance()
 	await _wait(0.8)
 	await _advance()
-	_check(not w.prologue and w.floor_i == 2, "프롤로그 뒤 옥상에서 밤 시작")
+	_check(not w.prologue and w.floor_i == 1 and w.player_x > w.HALL_X1, "프롤로그 뒤 강의실에서 깨어남")
+	_check(not game.has("note"), "쪽지는 직접 찾아야 함")
+	await _shot("lecture_wake")
+	main._on_interact("kids")
+	await _advance()
+	main._on_interact("note")                        # 2층 사무실 책상 위 쪽지
+	await _advance()
 	_check(game.has("note"), "쪽지 사실")
+	w.go_floor(2)
+	w.player_x = w.spot_x("sunset")
+	await _frames(3)
 	await _shot("roof_start")
 
 	# 0) 옥상 서쪽 난간: 해넘이 (17:08부터 해가 질 때까지 지켜보기)
@@ -265,8 +274,18 @@ func _run() -> void:
 	await _advance()
 	_check(game.loop == 2 and not game.realized, "두 번째 밤 (아직 모름)")
 	_check(game.shown_loop() == 1, "화면에는 여전히 1번째 밤")
+	_check(w.npc_state("keti") != "dormant", "한 번 깨운 손님은 다음 밤 처음부터 깨어 있음")
 	game.minutes = game.at("19:00")
 	await _wait(0.8)
+	await _advance()
+	await _frames(3)
+	await _shot("realize_quiz")
+	_key(KEY_1)                                      # 틀린 답: 꿈
+	await _frames(3)
+	await _advance()
+	_check(main.dialogue._choices.get_child_count() == 4, "틀리면 다시 고름")
+	_key(KEY_2)                                      # 정답: 같은 밤이 되풀이됨
+	await _frames(3)
 	await _advance()
 	await _shot("realize_card")
 	_key(KEY_ENTER)
@@ -291,6 +310,12 @@ func _clear_fx() -> void:
 ## 말 걸기 → (처음이면 이야기) → 증거 보여 주기 → 고른 증거 제출
 func _persuade(id: String, evidence: Array, shot: String) -> void:
 	await _clear_fx()
+	if w.npc_state(id) == "dormant":                 # 물건에 말을 걸어 깨우기
+		var home: String = w.NPC_PLAN[id]["home"]
+		_check(not w.npc_visible(id), id + ": 깨우기 전에는 보이지 않음")
+		main._on_interact(home)
+		await _advance()
+		_check(w.npc_state(id) != "dormant", id + ": 물건에서 깨어남")
 	w.go_floor(int(w.npc[id].y))
 	w.player_x = w.npc[id].x
 	await _frames(2)

@@ -120,6 +120,7 @@ const NPC_PLAN := {
 const TIDE_END := "21:30"
 const BOAT_X := 1095.0             # 돌쇠의 배 (떠나면 오른쪽 바다로)
 const FERRY_X := 1190.0            # 섬 연락선 (19:30 출항)
+const START_X := 540.0             # 밤이 시작될 때 깨어나는 자리 (2층 강의실, 친구들 옆)
 const TEACHER_X := 952.0           # 프롤로그에서 선생님이 서 있는 곳 (마당)
 
 var player_x := 200.0
@@ -156,8 +157,8 @@ func _ready() -> void:
 
 
 func reset_night() -> void:
-	player_x = 200.0
-	floor_i = 2
+	player_x = START_X                                 # 2층 강의실에서 깨어남
+	floor_i = 1
 	y_off = 0.0
 	vy = 0.0
 	jumps = 0
@@ -223,8 +224,8 @@ static func spot_floor(id: String) -> int:
 static func npc_state(id: String) -> String:
 	if Game.freed.has(id):
 		return "freed"
-	if Game.minutes < Game.at(NPC_PLAN[id]["wake"]):
-		return "dormant"
+	if not (Game.woken.has(id) or Game.night.get("woke_" + id, false)):
+		return "dormant"                                 # 물건에 말을 걸어야 깨어남 (한 번 깨우면 다음 밤부터는 처음부터 깨어 있음)
 	if id == "dolsoe":
 		if Game.minutes < Game.at("20:00"):
 			return "hall"
