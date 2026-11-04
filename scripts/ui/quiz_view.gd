@@ -58,6 +58,7 @@ func _make_buttons() -> void:
 	for k in _opts.size():
 		var b := Pal.button("%d. %s" % [k + 1, opts[_opts[k]]])
 		b.custom_minimum_size = Vector2(250 if wide else 520, 20)
+		b.clip_text = true                               # 긴 보기가 상자 밖으로 넘치지 않게
 		var idx: int = _opts[k]
 		b.pressed.connect(func(): pick(idx))
 		_buttons.add_child(b)
@@ -148,7 +149,8 @@ func _draw() -> void:
 	draw_rect(BOX, Pal.GOLD, false, 2.0)
 	var predict: bool = spec.get("predict", false)
 	var head: String = ("예측해 보자" if predict else "생각해 보자") + " · " + spec.get("title", "")
-	draw_string(font, BOX.position + Vector2(14, 20), head, HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.BIG, Pal.CYAN if predict else Pal.GOLD)
+	draw_string(font, BOX.position + Vector2(14, 20), head, HORIZONTAL_ALIGNMENT_LEFT, BOX.size.x - 90, Pal.SMALL, Pal.CYAN if predict else Pal.GOLD)
+	draw_line(BOX.position + Vector2(10, 28), BOX.position + Vector2(BOX.size.x - 10, 28), Color(Pal.GOLD, 0.4), 1)
 	if not predict:
 		draw_string(font, BOX.position + Vector2(BOX.size.x - 60, 18), "%d / %d" % [mini(_step + 1, _steps().size()), _steps().size()], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 	var y := BOX.position.y + 40
@@ -156,7 +158,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(BOX.position.x + 14, y), "보기 전 내 예측: " + spec["mine"], HORIZONTAL_ALIGNMENT_LEFT, BOX.size.x - 28, Pal.SMALL, Pal.DIM)
 		y += 16
 	var st := _cur()
-	var qw := 270.0 if st.has("diagram") else BOX.size.x - 28
+	var qw := 240.0 if st.has("diagram") else BOX.size.x - 28
 	draw_multiline_string(font, Vector2(BOX.position.x + 14 + (290 if st.has("diagram") else 0), y + 12), st["q"], HORIZONTAL_ALIGNMENT_LEFT, qw, Pal.SMALL, 6, Pal.TEXT)
 	if st.has("diagram"):
 		_diagram(st["diagram"], Rect2(BOX.position.x + 14, y, 270, 200))
@@ -185,10 +187,11 @@ func _diagram(name: String, r: Rect2) -> void:
 			draw_colored_polygon(night, Color(0.02, 0.02, 0.1, 0.7))
 			draw_circle(ec, 4, Pal.TEXT)
 			draw_string(font, ec + Vector2(-6, -8), "북극", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
-			var me := ec + Vector2(0, -56)
+			# 북극 위에서 보면 지구는 시계 반대 방향으로 돎: 아래쪽(6시)에 있는 사람이 오른쪽(밤)으로 들어감 = 해 질 녘
+			var me := ec + Vector2(0, 56)
 			draw_circle(me, 5, Pal.PINK)
-			draw_string(font, me + Vector2(8, -2), "나 (해 질 녘)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.PINK)
-			draw_string(font, Vector2(ec.x - 30, ec.y + 74), "낮 ← | → 밤", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+			draw_string(font, me + Vector2(8, 12), "나 (해 질 녘)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.PINK)
+			draw_string(font, Vector2(ec.x - 30, ec.y - 64), "낮 ← | → 밤", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 		"pendulum_floor":                              # 위에서 본 진자: 흔들리는 방향은 그대로, 바닥판만 돌아감
 			var rot := _t * 0.6
 			draw_circle(c, 80, Color8(200, 170, 140))
@@ -207,14 +210,14 @@ func _diagram(name: String, r: Rect2) -> void:
 			draw_circle(mc + Vector2(-44, 10), 46, Color8(70, 30, 26))
 			draw_string(font, Vector2(mc.x + 40, mc.y), "월식 사진", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
 			var y0 := r.position.y + 150
-			var names := ["① 세모 지구", "② 동그라미 지구", "③ 네모 지구"]
+			var names := ["① 세모", "② 동그라미", "③ 네모"]
 			for k in 3:
 				var p := Vector2(r.position.x + 46 + k * 88, y0)
 				match k:
 					0: draw_colored_polygon(PackedVector2Array([p + Vector2(0, -24), p + Vector2(24, 18), p + Vector2(-24, 18)]), Color8(60, 120, 200))
 					1: draw_circle(p, 22, Color8(60, 120, 200))
 					2: draw_rect(Rect2(p - Vector2(21, 21), Vector2(42, 42)), Color8(60, 120, 200))
-				draw_string(font, p + Vector2(-34, 38), names[k], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
+				draw_string(font, p + Vector2(-30, 38), names[k], HORIZONTAL_ALIGNMENT_LEFT, 70, Pal.SMALL, Pal.TEXT)
 		"ship_shapes":                                 # 네모 지구와 둥근 지구 위의 배
 			var y1 := r.position.y + 70
 			draw_rect(Rect2(r.position.x + 20, y1, 100, 40), Color8(60, 120, 200))

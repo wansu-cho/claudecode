@@ -138,7 +138,13 @@ func _draw() -> void:
 
 ## 남쪽을 바라본 하늘에 달이 지나는 길과, 찍은 사진의 자리 (월식 연속 사진)
 func _sky_xy(aa: Vector2) -> Vector2:
-	return Vector2(SKY.position.x + (aa.y - 90.0) / 180.0 * SKY.size.x, SKY.end.y - aa.x / 90.0 * SKY.size.y)
+	var az := fposmod(aa.y, 360.0)
+	return Vector2(SKY.position.x + (az - 90.0) / 180.0 * SKY.size.x, SKY.end.y - aa.x / 90.0 * SKY.size.y)
+
+
+func _in_south(aa: Vector2) -> bool:
+	var az := fposmod(aa.y, 360.0)
+	return aa.x > 0.0 and az >= 90.0 and az <= 270.0
 
 
 func _draw_sky_path(font: Font, m: float) -> void:
@@ -158,15 +164,15 @@ func _draw_sky_path(font: Font, m: float) -> void:
 	while t <= PATH_TO - Game.START_CLOCK:
 		var aa := Astro.moon_altaz(t)
 		var p := _sky_xy(aa)
-		if aa.x > 0.0 and aa.y > 90.0 and aa.y < 270.0 and prev != Vector2.INF:
+		if _in_south(aa) and prev != Vector2.INF:
 			draw_line(prev, p, Color(0.8, 0.8, 1.0, 0.25), 1)
-		prev = p if aa.x > 0.0 and aa.y > 90.0 and aa.y < 270.0 else Vector2.INF
+		prev = p if _in_south(aa) else Vector2.INF
 		t += 10.0
-	for ph in _photos:
-		var pm: float = ph["m"]
+	for k in _photos.size():                           # 연속 사진처럼 달을 크게 겹쳐 그림 (시각은 위아래로 번갈아)
+		var pm: float = _photos[k]["m"]
 		var pp := _sky_xy(Astro.moon_altaz(pm))
 		_draw_moon(pp, 9.0, pm)
-		draw_string(font, pp + Vector2(-14, 20), Game.clock(pm), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+		draw_string(font, pp + Vector2(-14, 22 if k % 2 == 0 else -12), Game.clock(pm), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	var aa_now := Astro.moon_altaz(m)
 	if aa_now.x > 0.0:
 		Pal.ring(self, _sky_xy(aa_now), 7, Pal.PINK)

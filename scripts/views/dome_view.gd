@@ -12,15 +12,15 @@ signal closed
 ## 남쪽 하늘: 남쪽 고도 30°를 향한 심사 투영 (지평선이 화면 아래 y = 318)
 var proj := SkyPainter.gno(180.0, 30.0, 274.0, Vector2(320, 160))
 const STAR_HIT := 12.0
-const EYE_C := Vector2(320, 188)
-const EYE_R := 140.0
+const EYE_C := Vector2(320, 196)
+const EYE_R := 130.0
 const NAMES := {
 	"procyon": "프로키온 (작은개자리)", "aldebaran": "알데바란 (황소자리의 붉은 별)", "alnilam": "오리온자리 허리띠의 별",
 	"alnitak": "오리온자리 허리띠의 별", "mintaka": "오리온자리 허리띠의 별", "bellatrix": "벨라트릭스 (오리온자리)", "saiph": "사이프 (오리온자리)",
 }
 ## 크게 볼 수 있는 것: [이름, 별 색, 일렁임(낮게 떠서 공기 때문에 색이 바뀜), 설명]
 const ZOOM := {
-	"canopus": ["카노푸스", Color8(255, 236, 210), true, "16인치 망원경으로 약 156배 크게 보았다. 그래도 별은 작은 점이다! 너무 멀어서 아무리 키워도 점으로 보인다. 수평선에 아주 낮게 떠서, 공기 때문에 무지개색으로 일렁인다."],
+	"canopus": ["카노푸스", Color8(255, 236, 210), true, "약 156배로 크게 봐도 별은 작은 점이다! 너무 멀어서 아무리 키워도 점이다. 수평선에 아주 낮게 떠서 공기 때문에 무지개색으로 일렁인다."],
 	"sirius": ["시리우스", Color8(220, 232, 255), true, "밤하늘에서 가장 밝은 별, 시리우스. 크게 봐도 점이다. 아직 낮게 떠서 색이 빠르게 바뀌며 반짝인다."],
 	"betelgeuse": ["베텔게우스", Color8(255, 170, 110), false, "베텔게우스. 크게 봐도 점이지만 주황빛이 또렷하다. 표면 온도가 낮은 늙은 별이라 붉게 보인다."],
 	"rigel": ["리겔", Color8(190, 215, 255), false, "리겔. 푸르스름한 흰빛의 점이다. 표면이 아주 뜨거운 별이라 푸르게 보인다."],
@@ -139,10 +139,10 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, Pal.SCREEN.x, 22), Color(0, 0, 0, 0.6))
 	var head: String = "돔 망원경 · 남쪽 하늘" if mode == "south" else "돔 망원경 (LX200 16인치, 약 156배) · " + ZOOM[zoom_id][0]
 	draw_string(font, Vector2(10, 15), "%s · %s" % [head, Game.clock()], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
-	var r := Rect2(10, 26, 620, 34)
+	var r := Rect2(10, 26, 620, 48 if mode == "zoom" else 34)
 	draw_rect(r, Pal.PANEL)
 	draw_rect(r, Pal.LINE, false, 1.0)
-	draw_multiline_string(font, r.position + Vector2(6, 14), _status, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, Pal.SMALL, 2, Pal.TEXT)
+	draw_multiline_string(font, r.position + Vector2(6, 14), _status, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, Pal.SMALL, 3, Pal.TEXT)
 
 
 func _draw_south(font: Font) -> void:
