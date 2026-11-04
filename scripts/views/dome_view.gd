@@ -1,54 +1,54 @@
 extends Control
-## 옥상 돔 안의 큰 망원경입니다.
-##   남쪽 하늘: 겨울철 남쪽 하늘(오리온자리, 시리우스)과, 수평선 바로 위의 노인성(카노푸스)
-##             노인성은 23:38 ~ 03:16에만 수평선 위로 뜹니다. (가장 높을 때 01:27, 고도 약 3°)
-##   달: 오늘 밤의 개기월식을 크게 보고 사진을 찍습니다.
-##       부분식 21:22 ~ 22:20, 개기식 22:20 ~ 23:52, 부분식 23:52 ~ 00:50
-##       그림자 가장자리가 보이는 부분식 때 20분 이상 간격으로 3장을 찍으면 '언제나 둥근 그림자'
+## 옥상 돔 안의 큰 망원경 (Meade LX200 ACF 16인치: 구경 406mm, f/10, 초점거리 4064mm)
+##   남쪽 하늘: 겨울철 남쪽 하늘(오리온자리, 시리우스)과, 수평선 바로 위의 카노푸스(노인성)
+##             카노푸스는 23:38 ~ 03:16에만 수평선 위로 뜹니다. (가장 높을 때 01:27, 고도 약 3°)
+##   별을 누르면 망원경을 그쪽으로 돌려 크게 봅니다. 26mm 접안렌즈: 약 156배, 실제 시야 약 0.33°
+##     카노푸스, 시리우스, 베텔게우스, 리겔: 아무리 키워도 점 (별은 너무 멀어서)
+##     오리온대성운(M42): 별이 태어나는 가스 구름, 가운데 트라페지움 네 별
+##   관측 전에는 그리스 이름 '카노푸스'로만 부르고, 크게 본 뒤에 우리 옛 이름 '노인성'을 알게 됩니다.
 
 signal closed
 
 ## 남쪽 하늘: 남쪽 고도 30°를 향한 심사 투영 (지평선이 화면 아래 y = 318)
 var proj := SkyPainter.gno(180.0, 30.0, 274.0, Vector2(320, 160))
 const STAR_HIT := 12.0
-const PHOTO_GAP := 20.0          # 사진 사이 최소 간격 (게임 분)
-const PHOTOS_NEEDED := 3
-const MOON_C := Vector2(320, 150)
-const MOON_PX := 70.0            # 망원경 속 달의 반지름 (픽셀)
+const EYE_C := Vector2(320, 188)
+const EYE_R := 140.0
 const NAMES := {
-	"sirius": "시리우스 (밤하늘에서 가장 밝은 별)", "betelgeuse": "베텔게우스 (오리온자리의 붉은 별)", "rigel": "리겔 (오리온자리의 푸른 별)",
-	"procyon": "프로키온", "aldebaran": "알데바란 (황소자리)", "alnilam": "오리온자리 허리띠의 별",
-	"alnitak": "오리온자리 허리띠의 별", "mintaka": "오리온자리 허리띠의 별",
+	"procyon": "프로키온 (작은개자리)", "aldebaran": "알데바란 (황소자리의 붉은 별)", "alnilam": "오리온자리 허리띠의 별",
+	"alnitak": "오리온자리 허리띠의 별", "mintaka": "오리온자리 허리띠의 별", "bellatrix": "벨라트릭스 (오리온자리)", "saiph": "사이프 (오리온자리)",
+}
+## 크게 볼 수 있는 것: [이름, 별 색, 일렁임(낮게 떠서 공기 때문에 색이 바뀜), 설명]
+const ZOOM := {
+	"canopus": ["카노푸스", Color8(255, 236, 210), true, "16인치 망원경으로 약 156배 크게 보았다. 그래도 별은 작은 점이다! 너무 멀어서 아무리 키워도 점으로 보인다. 수평선에 아주 낮게 떠서, 공기 때문에 무지개색으로 일렁인다."],
+	"sirius": ["시리우스", Color8(220, 232, 255), true, "밤하늘에서 가장 밝은 별, 시리우스. 크게 봐도 점이다. 아직 낮게 떠서 색이 빠르게 바뀌며 반짝인다."],
+	"betelgeuse": ["베텔게우스", Color8(255, 170, 110), false, "베텔게우스. 크게 봐도 점이지만 주황빛이 또렷하다. 표면 온도가 낮은 늙은 별이라 붉게 보인다."],
+	"rigel": ["리겔", Color8(190, 215, 255), false, "리겔. 푸르스름한 흰빛의 점이다. 표면이 아주 뜨거운 별이라 푸르게 보인다."],
+	"m42": ["오리온대성운 (M42)", Color.WHITE, false, "오리온대성운. 별이 태어나는 거대한 가스 구름이다. 가운데 사다리꼴로 모인 네 별이 트라페지움!"],
 }
 
 var mode := "south"
+var zoom_id := ""
 var pos := {}
-var _photos: Array
 var _status := ""
-var _status_t := 0.0              # 달 화면: 사진 결과를 잠깐 보여 주는 시간 (초)
 var _opened_at := 0
-var _photo_btn: Button
+var _back_btn: Button
+var _m42: Texture2D = load("res://assets/views/m42.png")
+var _scope: Texture2D = load("res://assets/views/lx200.png")
+var _t := 0.0
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_opened_at = Time.get_ticks_msec()
-	_photos = Game.night.get("ecl_photos", [])
-	Game.night["ecl_photos"] = _photos
 	var row := HBoxContainer.new()
-	row.position = Vector2(300, 338)
+	row.position = Vector2(440, 338)
 	row.add_theme_constant_override("separation", 6)
 	add_child(row)
-	var sky_btn := Pal.button("남쪽 하늘")
-	sky_btn.pressed.connect(func(): _set_mode("south"))
-	row.add_child(sky_btn)
-	var moon_btn := Pal.button("달")
-	moon_btn.pressed.connect(func(): _set_mode("moon"))
-	row.add_child(moon_btn)
-	_photo_btn = Pal.button("사진 찍기")
-	_photo_btn.pressed.connect(take_photo)
-	row.add_child(_photo_btn)
+	_back_btn = Pal.button("남쪽 하늘로")
+	_back_btn.pressed.connect(func(): _set_mode("south"))
+	row.add_child(_back_btn)
 	var back := Pal.button("나가기")
 	back.pressed.connect(close)
 	row.add_child(back)
@@ -57,26 +57,10 @@ func _ready() -> void:
 
 func _set_mode(m: String) -> void:
 	mode = m
-	_photo_btn.visible = m == "moon"
+	_back_btn.visible = m == "zoom"
 	if m == "south":
-		_status = "돔 망원경이 남쪽 하늘을 향했다. 수평선 근처를 잘 살펴보자. 별을 누르면 이름을 알려 준다."
-	else:
-		_status_t = 0.0
+		_status = "돔이 남쪽 하늘을 향했다. 별을 누르면 큰 망원경을 그쪽으로 돌려 크게 볼 수 있다. 남쪽 수평선 근처도 잘 살펴보자."
 	queue_redraw()
-
-
-func _moon_status() -> String:
-	var m := Game.minutes
-	if Astro.moon_altaz(m).x < 5.0:
-		return "달이 아직 낮게 떠 있어 돔 창으로 보이지 않는다."
-	match Astro.eclipse_phase(m):
-		"partial":
-			return "달 한쪽이 지구 그림자에 먹혀 들어가 있다! 그림자의 가장자리를 사진으로 남기자."
-		"total":
-			return "달 전체가 지구 그림자 속에 들어가 붉은 구릿빛으로 보인다. 지금은 그림자 가장자리가 보이지 않는다."
-	if m < Game.at(Astro.ECL_MID):
-		return "둥글고 밝은 보름달이다. 휘의 말로는 오늘 밤 21시 20분 무렵부터 달이 먹히기 시작한다고 했다."
-	return "월식이 끝나고 다시 둥근 보름달이 되었다."
 
 
 func close() -> void:
@@ -85,7 +69,7 @@ func close() -> void:
 
 
 func _process(delta: float) -> void:
-	_status_t = maxf(_status_t - delta, 0.0)
+	_t += delta
 	queue_redraw()
 
 
@@ -97,13 +81,12 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
-			get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		get_viewport().set_input_as_handled()
+		if mode == "zoom":
+			_set_mode("south")
+		else:
 			close()
-		elif event.keycode == KEY_P and mode == "moon":
-			get_viewport().set_input_as_handled()
-			take_photo()
 
 
 func press(p: Vector2) -> void:
@@ -116,8 +99,8 @@ func press(p: Vector2) -> void:
 		if d < best_d:
 			best_d = d
 			best = id
-	if best == "canopus":
-		look_canopus()
+	if ZOOM.has(best):
+		look(best)
 	elif NAMES.has(best):
 		_status = NAMES[best] + "."
 	elif best != "":
@@ -126,43 +109,23 @@ func press(p: Vector2) -> void:
 		_status = "남쪽 수평선 근처에는 아직 아무것도 보이지 않는다." if not pos.has("canopus") else "수평선 바로 위에 붉은 별이 있다. 눌러 보자!"
 
 
+## 망원경을 돌려 크게 봅니다
+func look(id: String) -> void:
+	zoom_id = id
+	_set_mode("zoom")
+	_status = ZOOM[id][3]
+	if id == "canopus":
+		var hwi := Game.woken.has("hwi")
+		var name_line := "휘: \"그건 노인성(老人星)이오! 노인성이 보이면 나라가 태평하다 하였소. 내 고향에선 귀한 별이지.\"" if hwi \
+				else "책방 교재에서 읽은 이름이 떠오른다. 우리 옛사람들은 이 별을 '노인성(老人星)'이라 불렀다."
+		_status += "  " + name_line
+		if Game.add_fact("canopus"):
+			_status += "  서울에서는 거의 볼 수 없는 별인데… 무슨 뜻일까? (나가서 생각해 보자)"
+
+
+## 하위 호환 (예전 이름)
 func look_canopus() -> void:
-	if Game.add_fact("canopus"):
-		_status = "수평선 바로 위에 붉게 빛나는 별, 노인성(카노푸스)이다! 서울에서는 거의 볼 수 없다는 별인데… 무슨 뜻일까? (나가서 생각해 보자)"
-	else:
-		_status = "노인성(카노푸스). 이 섬처럼 남쪽에서만 보이는 별이다."
-
-
-## 지금 달의 사진을 찍습니다. 그림자 가장자리가 보이는 부분식 때만 기록이 됩니다.
-func take_photo() -> void:
-	if mode != "moon":
-		return
-	var m := Game.minutes
-	if Astro.moon_altaz(m).x < 5.0:
-		_say("달이 보이지 않는다.")
-		return
-	match Astro.eclipse_phase(m):
-		"none":
-			_say("찰칵! 둥근 보름달이다. 그림자가 달에 닿았을 때 찍어야 그림자 모양을 알 수 있다.")
-			return
-		"total":
-			_say("찰칵! 달 전체가 붉다. 그림자의 가장자리가 안 보여서 모양을 알 수 없다. 부분식일 때 찍자.")
-			return
-	if not _photos.is_empty() and m - float(_photos[-1]["m"]) < PHOTO_GAP:
-		_say("앞 사진과 시간이 너무 가깝다. 그림자가 더 움직인 뒤(20분쯤 뒤)에 다시 찍자.")
-		return
-	_photos.append({"m": m})
-	if _photos.size() < PHOTOS_NEEDED:
-		_say("찰칵! %s, 그림자의 가장자리는 둥근 곡선이다. (사진 %d/%d)" % [Game.clock(m), _photos.size(), PHOTOS_NEEDED])
-	elif Game.add_fact("eclipse_round"):
-		_say("세 장 모두, 달을 가린 그림자의 가장자리가 둥글게 휘어 있다. 무슨 뜻일까? (나가서 생각해 보자)")
-	else:
-		_say("찰칵! 이번에도 둥근 그림자다.")
-
-
-func _say(text: String) -> void:
-	_status = text
-	_status_t = 5.0
+	look("canopus")
 
 
 # ---- 그리기 ----
@@ -172,14 +135,14 @@ func _draw() -> void:
 	if mode == "south":
 		_draw_south(font)
 	else:
-		_draw_moon_view(font)
+		_draw_zoom(font)
 	draw_rect(Rect2(0, 0, Pal.SCREEN.x, 22), Color(0, 0, 0, 0.6))
-	draw_string(font, Vector2(10, 15), "돔 망원경 · %s · %s" % ["남쪽 하늘" if mode == "south" else "달", Game.clock()], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
+	var head: String = "돔 망원경 · 남쪽 하늘" if mode == "south" else "돔 망원경 (LX200 16인치, 약 156배) · " + ZOOM[zoom_id][0]
+	draw_string(font, Vector2(10, 15), "%s · %s" % [head, Game.clock()], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	var r := Rect2(10, 26, 620, 34)
 	draw_rect(r, Pal.PANEL)
 	draw_rect(r, Pal.LINE, false, 1.0)
-	var text := _status if mode == "south" or _status_t > 0.0 else _moon_status()
-	draw_multiline_string(font, r.position + Vector2(6, 14), text, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, Pal.SMALL, 2, Pal.TEXT)
+	draw_multiline_string(font, r.position + Vector2(6, 14), _status, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, Pal.SMALL, 2, Pal.TEXT)
 
 
 func _draw_south(font: Font) -> void:
@@ -190,59 +153,37 @@ func _draw_south(font: Font) -> void:
 	for l in Astro.ORION_LINES:
 		if pos.has(l[0]) and pos.has(l[1]):
 			Pal.dotted(self, pos[l[0]], pos[l[1]], line_c, 3)
-	if Game.has("canopus") and pos.has("canopus"):
+	if pos.has("m42"):                                   # 오리온 칼에 붙은 뿌연 빛
+		draw_circle(pos["m42"], 3.5, Color(0.7, 0.85, 0.8, 0.35))
+	if pos.has("canopus") and Game.has("canopus"):
 		Pal.ring(self, pos["canopus"], 7, Pal.GOLD)
-		draw_string(font, pos["canopus"] + Vector2(10, -6), "노인성", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+		draw_string(font, pos["canopus"] + Vector2(10, -6), "노인성 (카노푸스)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	for d in [[135.0, "남동"], [180.0, "남"], [225.0, "남서"]]:
 		var p := SkyPainter.project(Vector2(0.0, d[0]), proj)
 		draw_string(font, Vector2(clampf(p.x - 8, 4.0, 600.0), hy + 14), d[1], HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+	# 앞쪽에 돔 안의 큰 망원경 (실루엣)
+	var sz := Vector2(_scope.get_width(), _scope.get_height()) / (168.0 / 40.0) * 1.6
+	draw_texture_rect(_scope, Rect2(Vector2(Pal.SCREEN.x - sz.x - 6, Pal.SCREEN.y - sz.y - 28), sz), false, Color(0.45, 0.45, 0.6))
 
 
-func _draw_moon_view(font: Font) -> void:
-	var m := Game.minutes
-	draw_rect(Rect2(Vector2.ZERO, size), Color8(6, 6, 14))
-	var aa := Astro.moon_altaz(m)
-	if aa.x >= 5.0:
-		_draw_moon(MOON_C, MOON_PX, m)
-		draw_string(font, MOON_C + Vector2(-MOON_PX - 40, -MOON_PX + 4), "북 ↑", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-		draw_string(font, MOON_C + Vector2(-MOON_PX - 40, -MOON_PX + 20), "← 동", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-		draw_string(font, Vector2(470, 90), "달의 높이 %d°" % roundi(aa.x), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	# 찍은 사진
-	for i in PHOTOS_NEEDED:
-		var r := Rect2(14 + i * 74, 250, 66, 82)
-		draw_rect(r, Color8(16, 14, 28))
-		draw_rect(r, Pal.LINE, false, 1.0)
-		if i < _photos.size():
-			var pm: float = _photos[i]["m"]
-			_draw_moon(r.position + Vector2(33, 34), 22.0, pm)
-			draw_string(font, Vector2(r.position.x + 12, r.end.y - 6), Game.clock(pm), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
-		else:
-			draw_string(font, Vector2(r.position.x + 22, r.position.y + 44), "%d" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-
-
-## 달과 그 위에 드리운 지구 그림자를 그립니다. (북쪽이 위, 동쪽이 왼쪽)
-func _draw_moon(c: Vector2, rad: float, m: float) -> void:
-	var px_per_arcmin := rad / Astro.MOON_R
-	var off := Astro.shadow_offset(m)
-	var sc := c + Vector2(-off.x, -off.y) * px_per_arcmin
-	var ur := Astro.UMBRA_R * px_per_arcmin
-	var pr := Astro.PENUMBRA_R * px_per_arcmin
-	var total := Astro.eclipse_phase(m) == "total"
-	var step := 2.0 if rad > 30.0 else 1.0
-	var y := -rad
-	while y <= rad:
-		var half := sqrt(maxf(rad * rad - y * y, 0.0))
-		var x := -half
-		while x <= half:
-			var p := c + Vector2(x, y)
-			var d := p.distance_to(sc)
-			var col := Color8(236, 232, 214)
-			if d < ur:
-				# 본그림자 안: 개기식이면 붉은 구릿빛, 부분식이면 어둡게 (가장자리 쪽이 조금 밝음)
-				var edge := clampf(d / ur, 0.0, 1.0)
-				col = Color8(120, 46, 30).lerp(Color8(176, 84, 52), edge * edge) if total else Color8(60, 26, 22).lerp(Color8(96, 40, 30), edge)
-			elif d < pr:
-				col = col.darkened(0.35 * (1.0 - (d - ur) / (pr - ur)))
-			draw_rect(Rect2(p.floor(), Vector2(step, step)), col)
-			x += step
-		y += step
+func _draw_zoom(font: Font) -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color8(2, 2, 6))
+	var item: Array = ZOOM[zoom_id]
+	if zoom_id == "m42":
+		var s := EYE_R * 2.2
+		draw_texture_rect(_m42, Rect2(EYE_C - Vector2(s, s) / 2.0, Vector2(s, s)), false)
+	else:
+		var col: Color = item[1]
+		if item[2]:                                       # 낮은 별: 공기 때문에 색이 빠르게 바뀌며 일렁임
+			col = Color.from_hsv(fmod(_t * 2.7, 1.0), 0.35, 1.0).lerp(col, 0.5)
+		var jit := Vector2(sin(_t * 23.0), cos(_t * 19.0)) * (1.2 if item[2] else 0.2)
+		draw_circle(EYE_C + jit, 7.0, Color(col, 0.12))
+		draw_circle(EYE_C + jit, 3.5, Color(col, 0.35))
+		draw_circle(EYE_C + jit, 1.6, col)
+		for i in 14:                                      # 시야 속 어두운 별 몇 개
+			var q := EYE_C + Vector2(fposmod(i * 61.0, 240.0) - 120.0, fposmod(i * 47.0, 220.0) - 110.0)
+			if q.distance_to(EYE_C) < EYE_R - 6:
+				draw_circle(q, 0.7, Color(1, 1, 1, 0.5))
+	draw_arc(EYE_C, EYE_R + 120.0, 0.0, TAU, 96, Color8(2, 2, 6), 240.0)   # 둥근 시야 밖은 검게
+	draw_arc(EYE_C, EYE_R, 0.0, TAU, 96, Color8(50, 50, 70), 2.0)
+	draw_string(font, EYE_C + Vector2(-EYE_R, EYE_R + 14), "시야 약 0.33° (보름달 지름의 3분의 2)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)

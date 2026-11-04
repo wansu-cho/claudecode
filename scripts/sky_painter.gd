@@ -40,7 +40,10 @@ static func px_per_deg(pr: Dictionary) -> float:
 ## (고도, 방위) → 화면 위치. 등 뒤에 있으면 OFF
 static func project(aa: Vector2, pr: Dictionary) -> Vector2:
 	if pr["type"] == "cyl":
-		return Vector2(pr["cx"] + wrapf(aa.y - pr["az"], -180.0, 180.0) * pr["k"], pr["hy"] - aa.x * pr["k"])
+		# 사인 곡선 투영: 높이 뜰수록 방위 간격을 cos(고도)만큼 좁힘
+		# (원통 투영은 천정 근처에서 방위가 크게 벌어져 별이 화면을 빠르게 가로지름)
+		var x: float = wrapf(aa.y - pr["az"], -180.0, 180.0) * pr["k"] * cos(deg_to_rad(clampf(aa.x, -90.0, 90.0)))
+		return Vector2(pr["cx"] + x, pr["hy"] - aa.x * pr["k"])
 	var h := deg_to_rad(aa.x)
 	var a := deg_to_rad(aa.y)
 	var v := Vector3(cos(h) * sin(a), cos(h) * cos(a), sin(h))

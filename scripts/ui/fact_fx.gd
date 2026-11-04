@@ -17,6 +17,7 @@ var _waiting := false
 var _shown_at := 0
 var _stage := 0
 var _fact := ""
+var quiz_runner: Callable              # main이 넣어 줌: 사실 id를 받아 설명 퀴즈를 풀 때까지 기다림
 
 
 func _ready() -> void:
@@ -112,7 +113,11 @@ func dismiss() -> void:
 		return
 	if _stage == 1:
 		_stage = 2
+		_waiting = false
 		var f: Dictionary = Story.FACTS[_fact]
+		if quiz_runner.is_valid() and Story.QUIZ.has(_fact):   # "무엇을 보았지?" 다음에 설명 퀴즈
+			_card.visible = false
+			await quiz_runner.call(_fact)
 		_card.queue_free()
 		_card = _make_card("★  깨달음!  ★", f["title"], f["aha"], "관측 일지에 기록 · 눌러서 계속", Pal.GOLD)
 		_pop_in()

@@ -7,6 +7,8 @@ signal closed
 var _page: Label
 var _title: Label
 var page_i := 0
+var _pic: Texture2D = null             # 장 그림: assets/views/book_1.png ~ book_9.png 가 있으면 글 위에 보여 줌
+const PIC := Rect2(252, 70, 366, 122)
 
 
 func _ready() -> void:
@@ -48,6 +50,10 @@ func open_page(i: int) -> void:
 	page_i = i
 	_title.text = Story.BOOK[i]["title"]
 	_page.text = Story.BOOK[i]["text"]
+	var path := "res://assets/views/book_%d.png" % (i + 1)
+	_pic = load(path) if ResourceLoader.exists(path) else null
+	_page.position = Vector2(252, 198 if _pic else 74)
+	_page.size = Vector2(368, 124 if _pic else 248)
 	queue_redraw()
 
 
@@ -78,3 +84,7 @@ func _draw() -> void:
 	draw_rect(Rect2(paper.position.x, paper.position.y, 6, paper.size.y), Color8(200, 150, 90))
 	draw_rect(Rect2(paper.position.x + 10, paper.position.y + 26, paper.size.x - 20, 1), Color8(200, 186, 160))
 	draw_rect(Rect2(paper.position.x - 4, paper.position.y + 2, 1, paper.size.y), Color8(0, 0, 0, 80))
+	if _pic:
+		var k := minf(PIC.size.x / _pic.get_width(), PIC.size.y / _pic.get_height())
+		var sz := Vector2(_pic.get_width(), _pic.get_height()) * k
+		draw_texture_rect(_pic, Rect2(PIC.position + (PIC.size - sz) / 2.0, sz), false)

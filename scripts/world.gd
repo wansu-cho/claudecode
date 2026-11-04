@@ -104,7 +104,8 @@ const SPOTS := [
 	{"id": "sunset", "floor": 2, "x": 70.0, "label": "전망대에서 서쪽 하늘 바라보기 (해넘이)"},
 	{"id": "telescope", "floor": 2, "x": 182.0, "label": "관측 의자에 누워 북쪽 하늘 보기"},
 	{"id": "stairs", "floor": 2, "x": STAIRS_X, "label": "나선 계단"},
-	{"id": "dome", "floor": 2, "x": DOME_X + 10.0, "label": "돔 안의 큰 망원경"},
+	{"id": "moon", "floor": 2, "x": 470.0, "label": "망원경으로 달 보기"},
+	{"id": "dome", "floor": 2, "x": DOME_X + 10.0, "label": "돔 안의 큰 망원경 (남쪽 하늘)"},
 ]
 
 ## 등장인물: 깨어나는 자료, 깨어나는 시각, 시간표 [시각, (x, 층)]
@@ -626,7 +627,8 @@ func _prop(name: String, feet: Vector2) -> void:
 
 ## 소품 2차 (props2, boats 시트). guest가 있으면 손님이 깨어나 빠져나간 뒤에는 빈 모습(_e)으로
 func _prop2(name: String, feet: Vector2, guest := "", sheet := "props2") -> void:
-	var n := name if guest == "" or npc_state(guest) == "dormant" else name + "_e"
+	var st := npc_state(guest) if guest != "" else ""
+	var n := name if st == "" or st == "dormant" or st == "freed" else name + "_e"   # 도운 손님은 물건으로 돌아가 있음
 	SheetSprite.named(sheet).draw(self, n, 0, feet, false, CHAR_H)
 
 

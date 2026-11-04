@@ -23,6 +23,7 @@ const LINE_HIT := 7.0
 const GUIDE_TIME := 2.0
 const CAS_SIDES := {"outer_a": ["caph", "schedar"], "inner_a": ["schedar", "navi"], "inner_b": ["navi", "ruchbah"], "outer_b": ["segin", "ruchbah"]}
 
+var _polaris_flash := 0.0          # 북극성을 찾은 직후 표시를 보여 주는 남은 시간 (초)
 var pos := {}                  # 지금 보이는 별의 화면 위치
 var dip_picked: Array = []
 var cas_sides: Array = []
@@ -83,6 +84,7 @@ func _refresh_positions() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_status_t = maxf(_status_t - delta, 0.0)
+	_polaris_flash = maxf(_polaris_flash - delta, 0.0)
 	if guide_t >= 0.0 and guide_t < GUIDE_TIME:
 		guide_t += delta
 	if _exp_t >= 0.0:
@@ -168,7 +170,9 @@ func _try_polaris() -> void:
 		say("찾았다! 길잡이 선이 가리키는 별, 북극성이다. 이쪽이 북쪽!")
 	else:
 		say("북극성이다. 이 방법은 이미 일지에 적어 두었다.")
-	Game.night["polaris_seen"] = true
+	# 카시오페이아로 찾은 표시는 잠깐 뒤 사라짐: 북두칠성 방법으로도 직접 찾아 눌러 보게
+	Game.night["polaris_seen"] = fact == "polaris_dip" or Game.has("polaris_dip")
+	_polaris_flash = 2.5
 
 
 func _start_guide(kind: String) -> void:
@@ -269,7 +273,7 @@ func _draw() -> void:
 			a = _meet()
 			b = pos.get("navi", Vector2.ZERO)
 		_draw_guide(a, b, clampf(guide_t / GUIDE_TIME, 0.0, 1.0))
-	if Game.night.get("polaris_seen", false) and pos.has("polaris"):
+	if (Game.night.get("polaris_seen", false) or _polaris_flash > 0.0) and pos.has("polaris"):
 		Pal.ring(self, pos["polaris"], 7, Pal.GOLD)
 		draw_string(get_theme_default_font(), pos["polaris"] + Vector2(10, -6), "북극성", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	# 망원경 테두리 느낌

@@ -196,12 +196,12 @@ func _run() -> void:
 	await _persuade("bori", ["perihelion", "tilt_seasons"], "bori")
 	_check(game.freed.has("bori"), "보리 귀환")
 
-	# 10-1) 돔: 개기월식을 부분식 때 20분 넘는 간격으로 세 번 찍기
+	# 10-1) 옥상 망원경: 개기월식을 부분식 때 20분 넘는 간격으로 세 번 찍기
 	game.minutes = game.at("21:30")
 	w.go_floor(2)
-	await _open("dome")
+	await _open("moon")
 	var dome: Node = main._overlay
-	dome._set_mode("moon")
+	_check(dome != null, "달 망원경 화면")
 	dome.take_photo()
 	game.minutes = game.at("21:40")
 	dome.take_photo()                                # 너무 가까움: 기록 안 됨
@@ -210,11 +210,11 @@ func _run() -> void:
 	game.minutes = game.at("22:16")
 	dome.take_photo()
 	await _frames(3)
-	await _shot("dome_moon_partial")
+	await _shot("moon_partial")
 	_check(game.has("eclipse_round"), "언제나 둥근 그림자")
 	game.minutes = game.at("23:00")
 	await _frames(3)
-	await _shot("dome_moon_total")
+	await _shot("moon_total")
 	dome.close()
 
 	# 11) 케티, 휘 (옥상, 23:00)
@@ -248,6 +248,10 @@ func _run() -> void:
 	_check(game.has("canopus"), "노인성 사실")
 	await _frames(2)
 	await _shot("canopus")
+	dome._set_mode("south")
+	dome.look("m42")
+	await _frames(2)
+	await _shot("m42")
 	dome.close()
 	await _persuade("teo", ["canopus"], "end")
 	_check(game.freed.has("teo"), "테오 귀환")
@@ -259,8 +263,16 @@ func _run() -> void:
 	w.player_x = w.spot_x("shelf")
 	await _frames(4)
 	_check(game.pieces() >= 6, "책장이 열릴 조건: 손님 여섯 명")
-	w.shelf = 2                                      # 책장이 다 밀려 열린 모습
-	await _frames(4)
+	main._on_interact("shelf")
+	await _advance()
+	await _frames(3)
+	await _shot("shelf_quiz")
+	await _solve_quizzes()                           # 교재 179쪽 '한 장 정리'
+	await _wait(0.8)
+	await _advance()
+	_key(KEY_1)                                      # 계속 둘러보기
+	await _frames(3)
+	_check(w.shelf == 2, "책장이 열림")
 	await _shot("shelf")
 	w.shelf = 0
 
@@ -299,7 +311,8 @@ func _run() -> void:
 
 ## 깨달음 카드가 떠 있으면 닫습니다.
 func _clear_fx() -> void:
-	for i in 10:
+	for i in 30:
+		await _solve_quizzes()                       # "무엇을 보았지?" 다음의 설명 퀴즈
 		if not main.fx.busy():
 			return
 		await _wait(0.4)
@@ -337,6 +350,18 @@ func _persuade(id: String, evidence: Array, shot: String) -> void:
 func _open(spot: String) -> void:
 	main._on_interact(spot)
 	await _frames(3)
+	await _solve_quizzes()                           # 처음 쓰는 장치면 예측 퀴즈부터
+	await _frames(3)
+
+
+## 떠 있는 퀴즈를 정답(예측은 첫 보기)으로 끝까지 풉니다.
+func _solve_quizzes() -> void:
+	for i in 40:
+		var q = main.quiz
+		if q == null or not is_instance_valid(q) or not q.is_inside_tree():
+			return
+		q.solve()
+		await _wait(1.3)
 
 
 func _check(ok: bool, what: String) -> void:
