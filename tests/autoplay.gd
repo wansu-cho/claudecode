@@ -138,7 +138,7 @@ func _run() -> void:
 	await _wait(3.9)
 	await _shot("long_exposure")
 	_check(game.has("star_trail"), "도는 하늘 (장노출)")
-	_check(absf(game.minutes - game.at("20:10")) < 3.0, "장노출로 1시간이 흐름")
+	_check(absf(game.minutes - game.at("20:10")) < 3.0, "장노출로 1시간이 흐름 (지금 %s)" % game.clock())
 	await _clear_fx()
 	main._overlay.close()
 

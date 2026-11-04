@@ -180,7 +180,7 @@ static func milky_way() -> Array:
 		var a_ngp := deg_to_rad(192.85948)
 		var d_ngp := deg_to_rad(27.12825)
 		var l_ncp := deg_to_rad(122.93192)
-		for i in 2200:
+		for i in 1400:
 			var l := rng.randf() * TAU
 			var b := deg_to_rad(clampf(rng.randfn(0.0, 6.5), -25.0, 25.0))
 			var core := 0.45 + 0.55 * pow(0.5 + 0.5 * cos(l), 2.0)        # 은하 중심(은경 0°) 쪽이 밝음
@@ -190,6 +190,21 @@ static func milky_way() -> Array:
 			var pr := precess(fposmod(rad_to_deg(ra), 360.0) / 15.0, rad_to_deg(dec))
 			_milky.append([pr.x, pr.y, core * rng.randf_range(0.3, 1.0) * (1.0 - absf(b) / deg_to_rad(25.0))])
 	return _milky
+
+
+## 은하수 점들의 (고도, 방위). 게임 시각이 0.5분 넘게 바뀔 때만 다시 계산 (매 프레임 계산하면 느림)
+static var _milky_aa: PackedVector2Array = PackedVector2Array()
+static var _milky_m := -9999.0
+
+
+static func milky_altaz(game_min: float) -> PackedVector2Array:
+	if absf(game_min - _milky_m) > 0.5 or _milky_aa.is_empty():
+		var pts := milky_way()
+		_milky_aa.resize(pts.size())
+		for i in pts.size():
+			_milky_aa[i] = altaz(pts[i][0], pts[i][1], game_min)
+		_milky_m = game_min
+	return _milky_aa
 
 
 ## 밤하늘이 얼마나 어두운지 (0 = 낮, 1 = 완전한 밤)
