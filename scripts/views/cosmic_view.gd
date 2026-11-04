@@ -15,6 +15,7 @@ const STAGES := [
 ]
 
 var stage := 0
+var _pics: Array = []                # 단계 그림 assets/views/cosmos_1.png ~ cosmos_7.png (있으면 코드 그림 대신)
 var _t := 0.0
 var _ok_at := 0
 
@@ -23,6 +24,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_ok_at = Time.get_ticks_msec()
+	for k in STAGES.size():
+		var path := "res://assets/views/cosmos_%d.png" % (k + 1)
+		_pics.append(load(path) if ResourceLoader.exists(path) else null)
 
 
 func next() -> void:
@@ -62,7 +66,12 @@ func _draw() -> void:
 	rng.seed = 7 + stage
 	for i in 120:
 		draw_rect(Rect2(rng.randf() * 640, rng.randf() * 300, 1, 1), Color(1, 1, 1, rng.randf_range(0.2, 0.7)))
-	match stage:
+	var pic: Texture2D = _pics[stage] if stage < _pics.size() else null
+	if pic:
+		var kk := maxf(Pal.SCREEN.x / pic.get_width(), Pal.SCREEN.y / pic.get_height()) * zoom
+		var sz := Vector2(pic.get_width(), pic.get_height()) * kk
+		draw_texture_rect(pic, Rect2((Pal.SCREEN - sz) / 2.0, sz), false)
+	match -1 if pic else stage:
 		0:
 			draw_circle(c, 70 / zoom, Color8(40, 100, 190))
 			draw_circle(c + Vector2(-18, -14) / zoom, 26 / zoom, Color8(80, 160, 90))
