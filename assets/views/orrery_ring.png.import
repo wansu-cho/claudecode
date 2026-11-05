@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6b3fm3unw1l0"
-path="res://.godot/imported/orrery_base.png-0ae13c0329613d9af281e84040c280c4.ctex"
+uid="uid://bgb3jeoasnmj4"
+path="res://.godot/imported/orrery_ring.png-2e392d2c6d633cbe5d8b5a0ccf570a7e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/views/orrery_base.png"
-dest_files=["res://.godot/imported/orrery_base.png-0ae13c0329613d9af281e84040c280c4.ctex"]
+source_file="res://assets/views/orrery_ring.png"
+dest_files=["res://.godot/imported/orrery_ring.png-2e392d2c6d633cbe5d8b5a0ccf570a7e.ctex"]
 
 [params]
 

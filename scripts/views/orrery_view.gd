@@ -25,7 +25,8 @@ const EARTH_R := 15.0
 const VIEW_UP := Vector2(0, 29.3 / 136.0)      # 고리가 납작한 비율 (위에서 비스듬히 내려다본 정도)
 
 var month := 12
-var _base: Texture2D = load("res://assets/views/orrery_base.png")
+var _ring: Texture2D = load("res://assets/views/orrery_ring.png")
+var _pedestal: Texture2D = load("res://assets/views/orrery_pedestal.png")
 var _sun: Texture2D = load("res://assets/views/orrery_sun.png")
 var _earth: Texture2D = load("res://assets/views/orrery_earth.png")
 var tilt := 23.5
@@ -139,15 +140,22 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color8(20, 18, 34))
 	draw_string(font, Vector2(10, 16), "1층 창고 · 지구 공전 모형", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	# 공전 모형: 나무 받침대와 금속 궤도 고리(비스듬히 본 모습), 받침 기둥 위의 태양
-	draw_texture_rect(_base, Rect2(CENTER - BASE_RING, BASE_SIZE), false)
+	# 겹치는 순서: 고리 뒤쪽 → (뒤쪽 지구) → 받침대 → 태양 → 고리 앞쪽 → (앞쪽 지구)
+	var frame := Rect2(CENTER - BASE_RING, BASE_SIZE)
+	var split := BASE_RING.y / BASE_SIZE.y                 # 고리 가운데 높이에서 앞뒤를 나눔
+	var rw := _ring.get_width()
+	var rh := _ring.get_height()
+	draw_texture_rect_region(_ring, Rect2(frame.position, Vector2(BASE_SIZE.x, BASE_RING.y)), Rect2(0, 0, rw, rh * split))
 	var ang := _orbit_angle(month)
 	var e := CENTER + Vector2(cos(ang) * ORBIT.x, sin(ang) * ORBIT.y)
 	var far := sin(ang) < 0.0                         # 고리 뒤쪽이면 태양에 가려짐
 	if far:
 		_draw_earth(e)
+	draw_texture_rect(_pedestal, frame, false)
 	draw_circle(SUN, SUN_R + 10.0, Color(1, 0.8, 0.4, 0.12))
 	draw_texture_rect(_sun, Rect2(SUN - Vector2(SUN_R, SUN_R), Vector2(SUN_R, SUN_R) * 2.0), false)
-	_draw_ring_front()                                 # 고리 앞쪽은 태양 받침 기둥보다 앞에 보여야 함
+	draw_texture_rect_region(_ring, Rect2(frame.position + Vector2(0, BASE_RING.y), Vector2(BASE_SIZE.x, BASE_SIZE.y - BASE_RING.y)),
+			Rect2(0, rh * split, rw, rh * (1.0 - split)))   # 고리 앞쪽은 태양 받침 기둥보다 앞에
 	if not far:
 		_draw_earth(e)
 	for mo in [3, 6, 9, 12]:                          # 계절의 가운데 달만 고리 둘레에 (고리가 납작해 다 쓰면 겹침)
@@ -225,20 +233,6 @@ func _draw_earth(e: Vector2) -> void:
 		y += step
 	var axis := Vector2.from_angle(-PI / 2.0 + deg_to_rad(tilt))
 	draw_string(font, e + axis * 36.0 + Vector2(-3, 0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.TEXT)
-
-
-## 고리의 앞쪽 일부(태양 받침 기둥 앞을 지나는 부분)를 다시 그려 기둥보다 앞에 보이게 함
-func _draw_ring_front() -> void:
-	var pts := PackedVector2Array()
-	for i in 25:
-		var a := PI / 2.0 - 0.42 + 0.84 * i / 24.0
-		pts.append(CENTER + Vector2(cos(a) * ORBIT.x, sin(a) * ORBIT.y))
-	draw_polyline(pts, Color8(60, 50, 74), 5.0)
-	draw_polyline(pts, Color8(190, 176, 182), 3.0)
-	var hi := PackedVector2Array()
-	for q in pts:
-		hi.append(q + Vector2(0, -0.8))
-	draw_polyline(hi, Color8(236, 224, 222), 1.0)
 
 
 ## 북쪽에서 내려다본 공전 (시계 반대 방향). 하지(6월 21일) = 태양 왼쪽
