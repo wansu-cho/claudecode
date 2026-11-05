@@ -30,11 +30,16 @@ SIZES = {
     "ext_right": (260, 220),
     "ground": (258.2, 90.2),       # 땅 단면 (옆으로 이어 붙임)
     "seawall": (60, 120),        # 바닷가 돌 축대
+    "quiz_earth_top": (270, 200),     # '생각해 보기' 퀴즈 그림 (퀴즈 화면 왼쪽 칸 크기)
+    "quiz_earth_shapes": (270, 200),
+    "quiz_ship_shapes": (270, 200),
+    "quiz_dial": (150, 151.2),        # 위에서 본 진자 눈금판 (게임이 천천히 돌림)
+    "quiz_swing": (13, 154.3),        # 진자가 흔들리는 방향 점선과 추 (돌지 않음)
     "far_islands": (500, 125),   # 먼 섬과 등대 (수평선 = 그림 아래에서 FAR_ISLE_BASE)
     "far_sea": (640, 180),       # 바다 (옆으로 이어 붙임, 맨 위 = 수평선)
     "far_clouds": (640, 160),    # 수평선 위 노을 구름 띠 (옆으로 이어 붙임)
     "roof": (256, 110),          # 옥상 바닥·난간 (옆으로 이어 붙임)
-    "roof_stair": (41.8, 61.6),  # 옥상 나선 계단 출구 (계단실)
+    "roof_stair": (42.0, 61.6),  # 옥상 나선 계단 출구 (계단실)
     "roof_deck": (84.7, 38.5),   # 해넘이 전망대 (계단 3칸 높은 데크)
     "roof_chair": (28.9, 20.9),  # 맨눈 관측 의자
     "dome": (182.7, 152.5),      # 돔 (문 포함)
@@ -53,9 +58,12 @@ SIZES = {
 }
 ## 원본에서 잘라 쓸 부분 (왼쪽, 위, 오른쪽, 아래) — 옥상은 난간 기둥 가운데에서 잘라야 이음매가 맞음
 ## 한 원본 그림에서 여러 부품을 잘라 쓸 때: 부품 이름 -> 원본 이름
-SOURCE = {"shelf_half": "secret_shelf", "shelf_open": "secret_shelf","orrery_sun": "orrery_parts", "orrery_earth": "orrery_parts", "orrery_base": "orrery_parts",
+SOURCE = {"quiz_earth_top": "earth_top", "quiz_earth_shapes": "earth_shapes", "quiz_ship_shapes": "ship_shapes",
+          "quiz_dial": "pendulum_floor", "quiz_swing": "pendulum_floor","shelf_half": "secret_shelf", "shelf_open": "secret_shelf","orrery_sun": "orrery_parts", "orrery_earth": "orrery_parts", "orrery_base": "orrery_parts",
           "pend_dial": "pendulum_parts", "pend_bob": "pendulum_parts"}
 CROPS = {
+    "quiz_dial": (38, 90, 651, 707),
+    "quiz_swing": (886, 84, 939, 713),
     "orrery_sun": (148, 324, 496, 672),
     "orrery_earth": (680, 382, 795, 614),
     "orrery_base": (978, 260, 1852, 739),
@@ -65,7 +73,7 @@ CROPS = {
     "yard": (0, 0, 1430, 625),
     "ground": (5, 0, 1425, 496),     # 가장자리의 어두운 테두리선을 잘라야 이음매가 안 보임
     "roof": (10, 0, 1418, 605),
-    "roof_stair": (290, 609, 521, 948),
+    "roof_stair": (17, 15, 254, 363),
     "roof_deck": (631, 736, 1097, 948),
     "roof_chair": (1207, 833, 1366, 948),
     "dome": (497, 110, 1502, 949),
@@ -77,7 +85,7 @@ CROPS = {
 
 
 def build(name):
-    src = next(p for d in ("backgrounds", "views") for p in (ROOT / "art_src" / d).glob(SOURCE.get(name, name) + ".*"))
+    src = next(p for d in ("backgrounds", "views", "quiz") for p in (ROOT / "art_src" / d).glob(SOURCE.get(name, name) + ".*"))
     a = np.array(Image.open(src).convert("RGB")).astype(np.int32)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     green = (g > r + 60) & (g > b + 60) & (g > 150)

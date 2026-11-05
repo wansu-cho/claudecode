@@ -185,10 +185,30 @@ func _draw() -> void:
 
 # ---- 그림 ----
 
+## 그림을 한 번 불러와 보관 (그릴 때마다 불러와 바로 버리면 화면에 그려지기 전에 사라져 하얗게 나옴)
+var _pics := {}
+
+
+func _pic(path: String) -> Texture2D:
+	if not _pics.has(path):
+		_pics[path] = load(path)
+	return _pics[path]
+
+
 func _diagram(name: String, r: Rect2) -> void:
 	var c := r.position + r.size / 2.0
 	var font := get_theme_default_font()
 	draw_rect(r, Color8(12, 10, 28))
+	if name == "pendulum_floor" and ResourceLoader.exists("res://assets/quiz/quiz_dial.png"):
+		_pendulum_pic(r, c, font)
+		return
+	var path := "res://assets/quiz/quiz_%s.png" % name
+	if ResourceLoader.exists(path):                    # 그림이 있으면 그림으로 (칸 비율에 맞춰)
+		var tex := _pic(path)
+		var k := minf(r.size.x / tex.get_width(), r.size.y / tex.get_height())
+		var sz := Vector2(tex.get_width(), tex.get_height()) * k
+		draw_texture_rect(tex, Rect2(r.position + (r.size - sz) / 2.0, sz), false)
+		return
 	match name:
 		"earth_top":                                   # 북극 위에서 본 지구, 해는 왼쪽
 			draw_circle(Vector2(r.position.x + 24, c.y), 16, Color8(255, 200, 90))
@@ -245,3 +265,21 @@ func _diagram(name: String, r: Rect2) -> void:
 			draw_rect(Rect2(r.position.x + 238, y1 + 8, 14, 9), Pal.TEXT)
 			draw_circle(Vector2(r.position.x + 152, y1 + 14), 3, Pal.PINK)
 			draw_string(font, Vector2(r.position.x + 132, y1 + 4), "나", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.PINK)
+
+
+## 위에서 본 푸코 진자: 눈금판(바닥)만 천천히 돌고, 흔들리는 방향(점선과 추)은 그대로
+func _pendulum_pic(r: Rect2, c: Vector2, font: Font) -> void:
+	var dial := _pic("res://assets/quiz/quiz_dial.png")
+	var swing := _pic("res://assets/quiz/quiz_swing.png")
+	var d := minf(r.size.x, r.size.y) - 34.0
+	var rot := _t * 0.6
+	draw_set_transform(c, rot, Vector2.ONE)
+	draw_texture_rect(dial, Rect2(-d / 2.0, -d / 2.0, d, d), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_string(font, c + Vector2.from_angle(rot - PI / 2.0) * (d / 2.0 - 18.0) + Vector2(-6, 4), "북", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
+	var h := d * 0.98
+	var w := h * swing.get_width() / swing.get_height()
+	draw_set_transform(c, deg_to_rad(-62.0), Vector2.ONE)          # 흔들리는 방향은 처음 그대로
+	draw_texture_rect(swing, Rect2(-w / 2.0, -h / 2.0, w, h), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_string(font, Vector2(r.position.x + 6, r.end.y - 6), "점선: 추가 흔들리는 방향 (그대로)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
