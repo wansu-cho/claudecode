@@ -7,7 +7,7 @@ extends Control
 
 signal closed
 
-const HY := 200.0                 # 화면 속 수평선
+const HY := 198.3                 # 화면 속 수평선 (바다 그림의 수평선 높이)
 const DEPART := "19:30"
 const SPEED_KM_MIN := 0.25        # 분당 0.25 km = 시속 15 km
 const EYE_HORIZON_KM := 6.18      # 눈높이 3 m에서 수평선까지 거리
@@ -19,6 +19,7 @@ const CABIN_M := 7.0
 const HULL_M := 4.0
 
 var _status := ""
+var _sea: Texture2D = load("res://assets/views/binocular_sea.png")
 var _ferry: Texture2D = load("res://assets/backgrounds/ferry.png")
 var _t := 0.0
 
@@ -78,13 +79,12 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var font := get_theme_default_font()
 	var dark := Astro.darkness(Game.minutes)
-	draw_rect(Rect2(0, 0, Pal.SCREEN.x, HY), Color8(10, 12, 30).lerp(Color8(90, 120, 170), 1.0 - dark))
-	draw_rect(Rect2(0, HY, Pal.SCREEN.x, Pal.SCREEN.y - HY), Color8(16, 22, 44).lerp(Color8(50, 80, 130), 1.0 - dark))
+	draw_texture_rect(_sea, Rect2(Vector2.ZERO, Pal.SCREEN), false, Color.WHITE.lerp(Color(1.6, 1.5, 1.4), 1.0 - dark))   # 밤바다 그림
 	for i in 60:
 		draw_rect(Rect2((i * 71) % 640, (i * 37) % int(HY - 10), 1, 1), Color(1, 1, 1, 0.5 * dark))
-	for i in 30:
-		var y := HY + 4 + (i * 11) % 150
-		draw_rect(Rect2(fposmod(i * 83.0 + sin(_t + i) * 6.0, 640), y, 6, 1), Color(0.6, 0.7, 1.0, 0.25))
+	for i in 24:                                       # 물결 반짝임 (천천히 일렁임)
+		var y := HY + 6 + (i * 11) % 150
+		draw_rect(Rect2(fposmod(i * 83.0 + sin(_t + i) * 6.0, 640), y, 5, 1), Color(0.7, 0.8, 1.0, 0.12 + 0.08 * sin(_t * 2.0 + i)))
 	_draw_ship()
 	# 쌍안경 테두리 (두 원 바깥을 검게)
 	var c1 := Vector2(250, 180)

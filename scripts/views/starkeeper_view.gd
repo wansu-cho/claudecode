@@ -4,6 +4,7 @@ extends Control
 var piece := false                   # 일곱 번째 조각이 빛나는지
 var _t := 0.0
 var _bg: Texture2D = null
+var _light: TextureRect
 
 
 func _ready() -> void:
@@ -11,6 +12,17 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var path := "res://assets/backgrounds/starkeeper.png"
 	_bg = load(path) if ResourceLoader.exists(path) else null
+	_light = TextureRect.new()                                   # 검은 배경 그림이라 더하기 합성으로 겹침
+	_light.texture = load("res://assets/views/rising_light.png")
+	_light.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_light.size = Vector2(120, 180)
+	_light.position = Vector2(320 - 60, 222 - 180 * 0.9)          # 빛의 밑동(그림 아래 10%)이 펼친 일지 위에
+	_light.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_light.material = mat
+	_light.visible = false
+	add_child(_light)
 
 
 func _process(delta: float) -> void:
@@ -45,7 +57,9 @@ func _draw() -> void:
 		draw_line(Vector2(295, 206), Vector2(295, 220), Color8(160, 140, 110), 1)
 		draw_rect(Rect2(360, 212, 30, 8), Color8(200, 40, 40))     # 빨간 손전등
 		draw_string(font, Vector2(10, 350), "(임시 그림: 별지기의 방)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
-	if piece:                                                   # 일곱 번째 조각
+	if piece:                                                   # 일곱 번째 조각: 일지 위로 피어오르는 금빛 (더하기 합성)
+		_light.visible = true
+		_light.modulate.a = 0.75 + 0.25 * sin(_t * 2.0)
 		var c := Vector2(320, 196)
 		var g := 0.5 + 0.5 * sin(_t * 3.0)
 		draw_circle(c, 26 + 6 * g, Color(1, 0.86, 0.45, 0.18))

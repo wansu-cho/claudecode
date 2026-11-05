@@ -16,6 +16,7 @@ const SKY := Rect2(318, 68, 312, 190)   # 남쪽 하늘 판 (왼쪽 동 90°, �
 const PATH_FROM := 18.0 * 60.0   # 달의 길을 그릴 시각 범위 (시계 분)
 const PATH_TO := 30.0 * 60.0
 
+var _face: Texture2D = load("res://assets/views/moon_face.png")
 var _photos: Array
 var _status := ""
 var _status_t := 0.0
@@ -187,6 +188,8 @@ func _draw_moon(c: Vector2, rad: float, m: float) -> void:
 	var ur := Astro.UMBRA_R * px_per_arcmin
 	var pr := Astro.PENUMBRA_R * px_per_arcmin
 	var total := Astro.eclipse_phase(m) == "total"
+	draw_texture_rect(_face, Rect2(c - Vector2(rad, rad), Vector2(rad, rad) * 2.0), false)   # 달 표면 그림 (바다와 충돌구)
+	# 그 위에 지구 그림자: 본그림자는 어둡게(개기식이면 구릿빛), 반그림자는 살짝 어둡게
 	var step := 2.0 if rad > 30.0 else 1.0
 	var y := -rad
 	while y <= rad:
@@ -195,12 +198,11 @@ func _draw_moon(c: Vector2, rad: float, m: float) -> void:
 		while x <= half:
 			var p := c + Vector2(x, y)
 			var d := p.distance_to(sc)
-			var col := Color8(236, 232, 214)
 			if d < ur:
 				var edge := clampf(d / ur, 0.0, 1.0)
-				col = Color8(120, 46, 30).lerp(Color8(176, 84, 52), edge * edge) if total else Color8(60, 26, 22).lerp(Color8(96, 40, 30), edge)
+				var col := Color(0.55, 0.2, 0.12, 0.78).lerp(Color(0.7, 0.33, 0.2, 0.62), edge * edge) if total else Color(0.1, 0.04, 0.04, 0.88).lerp(Color(0.25, 0.1, 0.08, 0.8), edge)
+				draw_rect(Rect2(p.floor(), Vector2(step, step)), col)
 			elif d < pr:
-				col = col.darkened(0.35 * (1.0 - (d - ur) / (pr - ur)))
-			draw_rect(Rect2(p.floor(), Vector2(step, step)), col)
+				draw_rect(Rect2(p.floor(), Vector2(step, step)), Color(0, 0, 0.05, 0.35 * (1.0 - (d - ur) / (pr - ur))))
 			x += step
 		y += step
