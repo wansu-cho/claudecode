@@ -12,7 +12,7 @@ const ROOT = path.resolve(__dirname, '..');
   await page.pdf({
     path: out, format: 'A4', printBackground: true, displayHeaderFooter: true,
     headerTemplate: '<div></div>',
-    footerTemplate: '<div style="font-size:8px;width:100%;text-align:center;color:#888">별지기의 마지막 밤 · 스토리 기획서 v2 · <span class="pageNumber"></span></div>',
+    footerTemplate: '<div style="font-size:8px;width:100%;text-align:center;color:#888">별지기의 마지막 밤 · 스토리 기획서 v3 · <span class="pageNumber"></span></div>',
     margin: { top: '16mm', bottom: '16mm', left: '15mm', right: '15mm' },
   });
   await b.close();

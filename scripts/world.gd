@@ -39,7 +39,6 @@ const GRAVITY := 780.0
 const NPC_SPEED := 55.0
 const REACH := 24.0
 const CHAR_H := 40.0              # 아이 캐릭터의 키 (게임 좌표). 새 그림(시트)은 이 키로 그림
-const OLD_PX := 1.5               # 아직 새 그림이 없는 사람(옛 도트 그림)을 키에 맞춰 키우는 배율
 ## 책방 맨 왼쪽 책장 = 지하로 가는 비밀 책장 (책방 그림 속 책장 가운데 x)
 const SHELF_X := 486.0
 const SHELF_POS := Vector2(468.7, 216.2)   # 책장이 밀린 그림(입구 돌벽)의 왼쪽 위
@@ -779,11 +778,7 @@ func _draw_people() -> void:
 		var feet := Vector2(p.x, ground_y(f, p.x) - (4 if on_pier else 0))
 		if id == "keti":
 			feet.y += sin(_t * 2.0) - 2.0
-		if HD.has(id):
-			_draw_hd_npc(id, feet, player_x < p.x)
-		else:
-			Sprites.draw_aura(self, Sprites.rows(id), feet, Color(0.5, 0.92, 0.97, 0.8), OLD_PX)
-			Sprites.draw(self, Sprites.rows(id), Sprites.pal(id), feet, player_x < p.x, 1.0, OLD_PX)
+		_draw_hd_npc(id, feet, player_x < p.x)
 	if prologue:                                                    # 해를 등진 선생님 (얼굴이 안 보이는 실루엣)
 		var tf := Vector2(TEACHER_X, floor_y(0))
 		var t_sp := SheetSprite.named("teacher")
