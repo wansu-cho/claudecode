@@ -504,42 +504,18 @@ func _true_ending() -> void:
 ## 위에 거꾸로 그려지는 일주 사진(긴 호가 점점 짧아져 점으로 돌아감)이 겹칩니다.
 func _rewind() -> void:
 	Sfx.play("rewind", -4.0)
-	var trails := RewindFx.new()
-	add_child(trails)
+	world.rewind_from = Game.NIGHT_LEN                   # 하늘의 실제 별들이 거꾸로 돌며 호를 그림 (세계 뒤쪽 하늘에)
+	var cap := Pal.label("시간이 거꾸로 흐른다…", Pal.SMALL, Color(1, 1, 1, 0.85), HORIZONTAL_ALIGNMENT_CENTER)
+	cap.position = Vector2(0, Pal.SCREEN.y - 30)
+	cap.size = Vector2(Pal.SCREEN.x, 18)
+	add_child(cap)
 	var tw := create_tween()
-	tw.tween_method(func(v: float): Game.minutes = v, Game.NIGHT_LEN, 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.parallel().tween_method(func(v: float): trails.k = v, 1.0, 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_method(func(v: float): Game.minutes = v, Game.NIGHT_LEN, 0.0, 4.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
+	world.rewind_from = -1.0
 	var tw2 := create_tween()
-	tw2.tween_property(trails, "modulate:a", 0.0, 0.5)
-	tw2.tween_callback(trails.queue_free)
-
-
-class RewindFx extends Control:
-	var k := 1.0                         # 1 = 밤새 찍은 긴 호, 0 = 점
-	var _stars: Array = []
-
-	func _ready() -> void:
-		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 2141
-		for i in 140:
-			_stars.append([rng.randf_range(12.0, 420.0), rng.randf() * TAU, rng.randf_range(0.25, 0.9)])
-
-	func _process(_d: float) -> void:
-		queue_redraw()
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, Pal.SCREEN), Color(0.02, 0.02, 0.08, 0.55 * k + 0.25))
-		var pole := Vector2(Pal.SCREEN.x / 2.0, 70.0)           # 북극성 근처를 가운데로
-		var sweep := deg_to_rad(15.0 * 14.5) * k                 # 14시간 30분 동안 돈 각도 → 0
-		for s in _stars:
-			var r: float = s[0]
-			var a0: float = s[1]
-			draw_arc(pole, r, a0, a0 + maxf(sweep, 0.02), maxi(4, int(48 * k)), Color(0.85, 0.9, 1.0, s[2] * 0.8), 1.0)
-		draw_circle(pole, 2.0, Color(1, 1, 0.9))
-		draw_string(get_theme_default_font(), Vector2(0, Pal.SCREEN.y - 24), "시간이 거꾸로 흐른다…", HORIZONTAL_ALIGNMENT_CENTER, Pal.SCREEN.x, Pal.SMALL, Color(1, 1, 1, 0.8))
+	tw2.tween_property(cap, "modulate:a", 0.0, 0.5)
+	tw2.tween_callback(cap.queue_free)
 
 
 func _check_prototype_end() -> void:

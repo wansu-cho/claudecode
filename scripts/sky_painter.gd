@@ -97,7 +97,7 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 				if p.x < 0 or p.x >= size.x or p.y < 0:
 					continue
 				var big := 2.0 if k > 3.5 else 1.0
-				ci.draw_rect(Rect2(p.floor(), Vector2(big, big)), Color(0.78, 0.8, 0.95, 0.16 * s[2] * mw * clampf(aa.x / 15.0, 0.3, 1.0)))
+				ci.draw_rect(Rect2(p - Vector2(big, big) / 2.0, Vector2(big, big)), Color(0.78, 0.8, 0.95, 0.16 * s[2] * mw * clampf(aa.x / 15.0, 0.3, 1.0)))
 	if dark > 0.05:
 		for s in Astro.field():
 			var aa := Astro.altaz(s[0], s[1], m)
@@ -106,7 +106,7 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 			var p := project(aa, pr)
 			if p.x < 0 or p.x >= size.x or p.y < 0:
 				continue
-			ci.draw_rect(Rect2(p.floor(), Vector2.ONE), Color(Pal.STAR, s[2] * dark * (1.0 - 0.7 * moon) * clampf(aa.x / 6.0, 0.2, 1.0)))
+			ci.draw_rect(Rect2(p - Vector2(0.5, 0.5), Vector2.ONE), Color(Pal.STAR, s[2] * dark * (1.0 - 0.7 * moon) * clampf(aa.x / 6.0, 0.2, 1.0)))
 		for id in Astro.STARS:
 			var aa := Astro.star_altaz(id, m)
 			if aa.x <= 0.0 or Astro.hidden(aa):
@@ -120,13 +120,13 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 			var low := clampf(1.0 - aa.x / 8.0, 0.0, 1.0)
 			var col := Color(Pal.STAR.lerp(Color(1.0, 0.55, 0.35), low * 0.8), dark * (1.0 - low * 0.45))
 			if mag < 1.0:
-				Pal.sparkle(ci, p, 3, col)
+				Pal.sparkle(ci, p, 3, col, true)
 			elif mag < 2.0:
-				Pal.sparkle(ci, p, 1, col)
+				Pal.sparkle(ci, p, 1, col, true)
 			elif mag < 3.0:
-				ci.draw_rect(Rect2(p.floor(), Vector2(2, 2)), col)
+				ci.draw_rect(Rect2(p - Vector2.ONE, Vector2(2, 2)), col)
 			else:
-				ci.draw_rect(Rect2(p.floor(), Vector2.ONE), Color(col, 0.8 * dark))
+				ci.draw_rect(Rect2(p - Vector2(0.5, 0.5), Vector2.ONE), Color(col, 0.8 * dark))
 
 	_draw_moon(ci, m, size, pr)
 

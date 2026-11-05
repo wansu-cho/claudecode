@@ -73,6 +73,8 @@ const SEAWALL_W := 60.0                      # 마당 끝 바닷가 돌 축대 �
 const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
+const BRIDGE_RAMP := 28.0                  # 다리 양 끝의 경사 길이 (계단처럼 뚝 떨어지지 않게)
+const CHAIR_SCALE := 1.45                  # 관측 의자 크기 (그림보다 크게: 아이가 누울 만한 크기)
 const DECK_UP := 15.0                      # 해넘이 전망대 바닥이 옥상보다 높은 만큼
 const DECK_STAIR := Vector2(106, 127)      # 전망대 계단: 이 x에서 다 올라감 ~ 이 x에서 옥상 바닥
 const WORKBENCH_UP := 50.0          # 창고 그림 속 작업대 윗면 높이 (바닥에서)
@@ -140,6 +142,7 @@ var boat_x := BOAT_X
 var ext_alpha := 1.0                 # 외벽 불투명도 (밖 1 → 안 0)
 var has_lantern := true
 var shelf := 0
+var rewind_from := -1.0              # 되감기 중이면 되감기를 시작한 게임 시각 (하늘에 거꾸로 그려지는 일주 호)
 var _step_t := 0.0
 var morning := false                 # 진엔딩 아침: 마당의 선생님이 해를 마주 봄
 var morning_face := false            # 얼굴이 보이기 시작 (실루엣이 아님)
@@ -220,8 +223,9 @@ func floor_y(f: int) -> float:
 func ground_y(f: int, x: float) -> float:
 	if f == 2 and x < DECK_STAIR.y:                                     # 해넘이 전망대 위 (오른쪽 계단으로 오르내림)
 		return FLOOR_Y[2] - DECK_UP * clampf((DECK_STAIR.y - x) / (DECK_STAIR.y - DECK_STAIR.x), 0.0, 1.0)
-	if f == 1 and x > HALL_X0 + 6 and x < HALL_X1 - 6:
-		return FLOOR_Y[1] - BRIDGE_UP
+	if f == 1:                                                          # 가운데 홀 다리: 양쪽 방에서 완만한 경사로 오르내림
+		var t := clampf(minf(x - (HALL_X0 - BRIDGE_RAMP / 2.0), (HALL_X1 + BRIDGE_RAMP / 2.0) - x) / BRIDGE_RAMP, 0.0, 1.0)
+		return FLOOR_Y[1] - BRIDGE_UP * smoothstep(0.0, 1.0, t)
 	return FLOOR_Y[f]
 
 
@@ -407,7 +411,10 @@ func _on_pier() -> bool:
 func _draw() -> void:
 	var m := Game.minutes
 	var hy := HOR - cam.y * 0.15             # 먼 하늘과 바다는 조금만 움직입니다
-	SkyPainter.draw(self, m, Pal.SCREEN, SkyPainter.cyl(Pal.SCREEN.x / 2.0, hy, SKY_K))
+	var sky_pr := SkyPainter.cyl(Pal.SCREEN.x / 2.0, hy, SKY_K)
+	SkyPainter.draw(self, m, Pal.SCREEN, sky_pr)
+	if rewind_from >= 0.0:
+		_draw_rewind_trails(m, sky_pr)
 	_draw_sea(m, hy)
 	draw_set_transform(-cam)
 	_draw_land()
@@ -464,17 +471,41 @@ func _draw_exterior() -> void:
 		draw_texture_rect(_bg_tex[name], EXTERIOR[name], false, Color(1, 1, 1, ext_alpha))
 
 
+## 되감기: 실제 별들이 지금 위치에서 되감기 시작 시각까지 지나온 길을 호로 그림 (별이 모두 함께 거꾸로 돎)
+func _draw_rewind_trails(m: float, pr: Dictionary) -> void:
+	var span := minf(rewind_from - m, 240.0)
+	if span <= 1.0:
+		return
+	var steps := clampi(int(span / 12.0), 2, 20)
+	var dark := maxf(Astro.darkness(m), 0.35)
+	var groups := [[Astro.field(), 0.45], [[], 0.9]]
+	for id in Astro.STARS:
+		var rd: Vector2 = Astro.star_radec(id)
+		groups[1][0].append([rd.x, rd.y, 1.0])
+	for g in groups:
+		for s in g[0]:
+			var prev := Vector2.INF
+			for k in steps + 1:
+				var t := m + span * k / steps
+				var aa := Astro.altaz(s[0], s[1], t)
+				var p := SkyPainter.project(aa, pr) if aa.x > 0.0 else Vector2.INF
+				if prev != Vector2.INF and p != Vector2.INF and prev.distance_to(p) < 120.0:
+					var fade := 1.0 - float(k) / (steps + 1)              # 지금 위치 쪽이 밝고, 지나온 쪽은 흐리게
+					draw_line(prev, p, Color(0.85, 0.9, 1.0, float(s[2]) * g[1] * dark * fade), 1.0)
+				prev = p
+
+
 ## 바깥(땅, 마당, 부두)은 밤이 깊을수록 어둡고 푸르스름하게
 func _night_tint() -> Color:
 	return Color.WHITE.lerp(Color(0.5, 0.48, 0.66), Astro.darkness(Game.minutes))
 
 
 ## 그림 하나를 바닥 가운데(feet) 기준으로 그리기 (OUTDOOR에 자리가 없는 소품용)
-func _draw_outdoor_at(name: String, feet: Vector2, tint := Color.WHITE) -> void:
+func _draw_outdoor_at(name: String, feet: Vector2, tint := Color.WHITE, scale := 1.0) -> void:
 	if not _bg_tex.has(name):
 		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
 	var t: Texture2D = _bg_tex[name]
-	var sz := Vector2(t.get_width(), t.get_height()) / (168.0 / 40.0)
+	var sz := Vector2(t.get_width(), t.get_height()) / (168.0 / 40.0) * scale
 	draw_texture_rect(t, Rect2(feet - Vector2(sz.x / 2.0, sz.y), sz), false, tint)
 
 
@@ -639,9 +670,25 @@ func _draw_roof(font: Font, f2: float) -> void:
 	_draw_outdoor("dome")
 	_draw_outdoor("roof_stair")
 	_draw_outdoor("roof_deck")
-	for cx in [168.0, 198.0]:                                          # 맨눈으로 북쪽 하늘을 보는 의자
-		_draw_outdoor_at("roof_chair", Vector2(cx, f2))
+	for cx in [166.0, 204.0]:                                          # 맨눈으로 북쪽 하늘을 보는 의자 (플레이어 키에 맞게 키움)
+		_draw_outdoor_at("roof_chair", Vector2(cx, f2), Color.WHITE, CHAIR_SCALE)
+	for ex in [B_X0, B_X1]:                                            # 옥상 양 끝: 난간을 받치는 모서리 기둥으로 마무리
+		_draw_corner_post(ex, f2)
 	_prop("telescope", Vector2(470, f2))                                # 달을 보는 망원경
+
+
+## 옥상 모서리 기둥: 난간 높이부터 옥상 바닥판 아래까지, 끊긴 그림 끝을 덮음
+func _draw_corner_post(x: float, f2: float) -> void:
+	var top := f2 - 30.0
+	var r := Rect2(x - 4.0, top, 8.0, 44.0)
+	draw_rect(r.grow(1.0), Color8(34, 18, 20))                       # 짙은 외곽선
+	draw_rect(r, Color8(118, 62, 36))
+	draw_rect(Rect2(r.position.x + 1.0, r.position.y, 2.0, r.size.y), Color8(168, 96, 52))   # 빛 받는 쪽 (왼쪽 위)
+	draw_rect(Rect2(r.end.x - 2.0, r.position.y, 2.0, r.size.y), Color8(84, 42, 28))
+	var cap := Rect2(x - 6.0, top - 4.0, 12.0, 5.0)                   # 기둥 머리
+	draw_rect(cap.grow(1.0), Color8(34, 18, 20))
+	draw_rect(cap, Color8(150, 84, 46))
+	draw_rect(Rect2(cap.position, Vector2(cap.size.x, 1.0)), Color8(196, 128, 72))
 
 
 ## 관측 장치·소품 그림 (props 시트). feet: 바닥 가운데

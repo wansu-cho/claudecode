@@ -8,7 +8,9 @@ extends Control
 
 signal done(picked: String)
 
-const BOX := Rect2(40, 34, 560, 292)
+const BOX := Rect2(40, 26, 560, 308)
+const BTN_H := 26.0                    # 보기 단추 하나의 높이 (간격 포함)
+const MSG_H := 44.0                    # 힌트·까닭 글 자리 (3줄)
 
 var spec: Dictionary
 var _step := 0
@@ -62,8 +64,13 @@ func _make_buttons() -> void:
 		var idx: int = _opts[k]
 		b.pressed.connect(func(): pick(idx))
 		_buttons.add_child(b)
-	_buttons.position = Vector2(BOX.position.x + (300 if wide else 20), BOX.position.y + 150)
+	# 보기는 상자 아래쪽에 붙이고, 힌트·까닭은 그 바로 위에 (서로 가리지 않게)
+	_buttons.position = Vector2(BOX.position.x + (300 if wide else 20), _buttons_top())
 	queue_redraw()
+
+
+func _buttons_top() -> float:
+	return BOX.end.y - 8.0 - BTN_H * _opts.size()
 
 
 ## 보기를 고릅니다 (원래 보기 번호)
@@ -161,11 +168,15 @@ func _draw() -> void:
 		y += 16
 	var st := _cur()
 	var qw := 240.0 if st.has("diagram") else BOX.size.x - 28
-	draw_multiline_string(font, Vector2(BOX.position.x + 14 + (290 if st.has("diagram") else 0), y + 12), st["q"], HORIZONTAL_ALIGNMENT_LEFT, qw, Pal.SMALL, 6, Pal.TEXT)
+	draw_multiline_string(font, Vector2(BOX.position.x + 14 + (290 if st.has("diagram") else 0), y + 12), st["q"], HORIZONTAL_ALIGNMENT_LEFT, qw, Pal.SMALL, 5 if st.has("diagram") else 4, Pal.TEXT)
+	var btop := _buttons_top()
 	if st.has("diagram"):
-		_diagram(st["diagram"], Rect2(BOX.position.x + 14, y, 270, 200))
+		_diagram(st["diagram"], Rect2(BOX.position.x + 14, y, 270, minf(200.0, BOX.end.y - 10.0 - y)))
 	if _msg != "":
-		draw_multiline_string(font, Vector2(BOX.position.x + 14, BOX.end.y - 30), _msg, HORIZONTAL_ALIGNMENT_LEFT, BOX.size.x - 28, Pal.SMALL, 2, _msg_col)
+		var mx := BOX.position.x + (300.0 if st.has("diagram") else 20.0)
+		var mw := 250.0 if st.has("diagram") else BOX.size.x - 40.0
+		draw_rect(Rect2(mx - 4, btop - MSG_H - 4, mw + 8, MSG_H), Color8(36, 30, 64))
+		draw_multiline_string(font, Vector2(mx, btop - MSG_H + 8), _msg, HORIZONTAL_ALIGNMENT_LEFT, mw, Pal.SMALL, 3, _msg_col)
 
 
 # ---- 그림 ----

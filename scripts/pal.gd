@@ -75,8 +75,9 @@ static func ring(ci: CanvasItem, center: Vector2, r: int, color: Color) -> void:
 
 
 ## 십자 반짝임 별
-static func sparkle(ci: CanvasItem, p: Vector2, arm: int, color: Color) -> void:
-	var c := p.floor()
+## smooth: 화소에 맞추지 않고 실제 위치에 그림 (하늘의 별이 함께 부드럽게 흐르도록)
+static func sparkle(ci: CanvasItem, p: Vector2, arm: int, color: Color, smooth := false) -> void:
+	var c := p - Vector2(0.5, 0.5) if smooth else p.floor()
 	ci.draw_rect(Rect2(c, Vector2.ONE), Color.WHITE)
 	for k in range(1, arm + 1):
 		var a := color
