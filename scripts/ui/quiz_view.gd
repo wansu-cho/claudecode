@@ -23,6 +23,9 @@ var _opts: Array = []                # 지금 보여 주는 보기 (원래 번�
 var _buttons: VBoxContainer
 var _t := 0.0
 var _locked := false
+var _worst := 0                        # 이 퀴즈에서 가장 많이 틀린 횟수 (한 단계 기준)
+var _book_btn: Button
+const PENALTY_MIN := 10.0
 
 
 func _init(s: Dictionary) -> void:
@@ -33,6 +36,13 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	Game.freeze()
+	if int(spec.get("book", 0)) > 0:
+		_book_btn = Pal.button("교재 %d장 펼쳐 보기" % int(spec["book"]))
+		_book_btn.position = Vector2(BOX.end.x - 150, BOX.position.y + 36)
+		_book_btn.custom_minimum_size = Vector2(140, 20)
+		_book_btn.visible = false
+		_book_btn.pressed.connect(_open_book)
+		add_child(_book_btn)
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 4)
 	add_child(_buttons)
@@ -49,6 +59,8 @@ func _cur() -> Dictionary:
 
 func _show_step() -> void:
 	_tries = 0
+	if _book_btn:
+		_book_btn.visible = false
 	_msg = ""
 	_opts = range(_cur()["opts"].size())
 	_make_buttons()
@@ -105,9 +117,13 @@ func pick(i: int) -> void:
 			_show_step()
 		return
 	_tries += 1
+	_worst = maxi(_worst, _tries)
 	Sfx.play("wrong", -8.0)
 	var why: Dictionary = st.get("why", {})
 	var lines := []
+	if spec.get("penalty", false):                       # 벌: 시간이 흐름 (연락선·물때·월식 같은 마감이 다가옴)
+		Game.minutes = minf(Game.minutes + PENALTY_MIN, Game.NIGHT_LEN - 1.0)
+		lines.append("(틀려서 시간이 %d분 흘렀다)" % int(PENALTY_MIN))
 	if why.has(i):
 		lines.append(why[i])
 	if _tries == 1:
@@ -125,10 +141,20 @@ func pick(i: int) -> void:
 		_make_buttons()
 	_msg = "  ".join(PackedStringArray(lines))
 	_msg_col = Color8(255, 170, 150)
+	if _tries >= 2 and int(spec.get("book", 0)) > 0:
+		_book_btn.visible = true                         # 두 번 틀리면 교재를 바로 펼쳐 볼 수 있음
 	queue_redraw()
 
 
+## 이번 퀴즈의 깨달음 별: 한 번도 안 틀리면 3, 힌트까지 받았으면 2, 보기 2개까지 갔으면 1
+func grade() -> int:
+	return 3 if _worst == 0 else (2 if _worst <= 2 else 1)
+
+
 func _finish(picked: String) -> void:
+	if spec.has("fact"):
+		Game.stars[spec["fact"]] = maxi(int(Game.stars.get(spec["fact"], 0)), grade())
+		Game.save()
 	Game.unfreeze()
 	done.emit(picked)
 	queue_free()
@@ -142,6 +168,9 @@ func solve() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	for c in get_children():                          # 교재를 펼쳐 둔 동안에는 보기를 고르지 않음
+		if c.has_method("open_page"):
+			return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var n: int = event.keycode - KEY_1
 		if n >= 0 and n < _opts.size():
@@ -283,3 +312,10 @@ func _pendulum_pic(r: Rect2, c: Vector2, font: Font) -> void:
 	draw_texture_rect(swing, Rect2(-w / 2.0, -h / 2.0, w, h), false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_string(font, Vector2(r.position.x + 6, r.end.y - 6), "점선: 추가 흔들리는 방향 (그대로)", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.DIM)
+
+
+## 책방 교재를 퀴즈 위에 펼침 (닫으면 퀴즈로 돌아옴)
+func _open_book() -> void:
+	var b: Control = load("res://scripts/views/book_view.gd").new()
+	add_child(b)
+	b.open_page(int(spec["book"]) - 1)

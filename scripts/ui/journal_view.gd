@@ -47,7 +47,8 @@ func _ready() -> void:
 	scroll.add_child(_list)
 	for id in Story.FACT_ORDER:
 		var known := Game.has(id)
-		var b := Pal.button(Story.FACTS[id]["title"] if known else "???")
+		var star := "★".repeat(int(Game.stars.get(id, 0)))
+		var b := Pal.button((Story.FACTS[id]["title"] + ("  " + star if star != "" else "")) if known else "???")
 		b.custom_minimum_size = Vector2(244, 20)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.clip_text = true

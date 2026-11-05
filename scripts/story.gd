@@ -389,6 +389,12 @@ const FACT_VIEW := {
 	"polaris_cas": "telescope", "polaris_dip": "telescope", "ship_horizon": "binoculars",
 	"eclipse_round": "moon", "canopus": "dome", "tilt_seasons": "orrery", "perihelion": "orrery",
 }
+## 사실 → 함께 보면 좋은 책방 교재의 장 (퀴즈를 두 번 틀리면 "교재 보기" 단추가 생김)
+const FACT_BOOK := {
+	"sunset": 1, "pendulum": 1, "star_trail": 2, "dipper_low": 3, "polaris_cas": 3, "polaris_dip": 3,
+	"ship_horizon": 4, "eclipse_round": 5, "canopus": 6, "tilt_seasons": 7, "perihelion": 7,
+}
+const STAR_NAME := {3: "금별 ★★★", 2: "은별 ★★", 1: "동별 ★"}
 ## 설명: "무엇을 보았지?" 카드 다음, 깨달음 카드 전에 풉니다
 const QUIZ := {
 	"sunset": {"title": "해는 왜 서쪽으로 질까?", "steps": [

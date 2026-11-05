@@ -295,6 +295,9 @@ func _predict(view: String) -> bool:
 func _explain_quiz(fact: String) -> void:
 	var spec: Dictionary = Story.QUIZ[fact].duplicate()
 	spec["mine"] = Game.predicted.get(Story.FACT_VIEW.get(fact, ""), "")
+	spec["fact"] = fact
+	spec["book"] = Story.FACT_BOOK.get(fact, 0)
+	spec["penalty"] = true                               # 틀리면 게임 시간이 흐름
 	var q := QuizScript.new(spec)
 	fx.add_child(q)
 	quiz = q

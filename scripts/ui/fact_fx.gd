@@ -119,7 +119,9 @@ func dismiss() -> void:
 			_card.visible = false
 			await quiz_runner.call(_fact)
 		_card.queue_free()
-		_card = _make_card("★  깨달음!  ★", f["title"], f["aha"], "관측 일지에 기록 · 눌러서 계속", Pal.GOLD)
+		var st: int = int(Game.stars.get(_fact, 0))
+		var title: String = f["title"] + ("  ·  " + Story.STAR_NAME[st] if st > 0 else "")
+		_card = _make_card("★  깨달음!  ★", title, f["aha"], "관측 일지에 기록 · 눌러서 계속", Pal.GOLD)
 		Sfx.play("aha", -4.0)
 		_pop_in()
 		return
