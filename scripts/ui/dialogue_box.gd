@@ -13,6 +13,7 @@ var _text: Label
 var _hint: Label
 var _choices: VBoxContainer
 var _portrait: TextureRect
+const CHOICE_W := 260.0
 var face := 0                     # 다음 say()에서 쓸 표정 (끝나면 0으로 돌아감)
 var _waiting := false
 var _opened_at := 0
@@ -89,15 +90,18 @@ func choose(options: Array, question := "") -> int:
 	Game.freeze()
 	_hint.visible = false
 	for c in _choices.get_children():
+		_choices.remove_child(c)
 		c.queue_free()
+	_choices.size = Vector2.ZERO                     # 이전 선택지의 폭이 남지 않게
 	for i in options.size():
 		var b := Pal.button(options[i])
-		b.custom_minimum_size = Vector2(260, 22)
+		b.custom_minimum_size = Vector2(CHOICE_W, 22)
+		b.clip_text = true                           # 긴 선택지가 화면 밖으로 나가지 않게
 		b.pressed.connect(func():
 			Sfx.play("click", -8.0)
 			_picked.emit(i))
 		_choices.add_child(b)
-	_choices.position = Vector2(364, (256 if question != "" else 330) - options.size() * 26)
+	_choices.position = Vector2(Pal.SCREEN.x - 16 - CHOICE_W, (256 if question != "" else 330) - options.size() * 26)
 	var picked: int = await _picked
 	for c in _choices.get_children():
 		c.queue_free()

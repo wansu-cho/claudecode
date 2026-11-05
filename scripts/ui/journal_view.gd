@@ -50,6 +50,7 @@ func _ready() -> void:
 		var b := Pal.button(Story.FACTS[id]["title"] if known else "???")
 		b.custom_minimum_size = Vector2(244, 20)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.clip_text = true
 		b.disabled = not known
 		b.pressed.connect(_on_fact.bind(id, b))
 		_list.add_child(b)

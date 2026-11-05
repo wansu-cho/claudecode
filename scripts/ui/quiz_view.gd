@@ -9,7 +9,9 @@ extends Control
 signal done(picked: String)
 
 const BOX := Rect2(40, 26, 560, 308)
-const BTN_H := 26.0                    # 보기 단추 하나의 높이 (간격 포함)
+const BTN_H := 26.0
+const BTN_W := 520.0                   # 보기 단추 폭 (그림 없는 문제)
+const BTN_W_DIAGRAM := 250.0           # 그림 있는 문제: 오른쪽 칸 폭                    # 보기 단추 하나의 높이 (간격 포함)
 const MSG_H := 44.0                    # 힌트·까닭 글 자리 (3줄)
 
 var spec: Dictionary
@@ -53,13 +55,15 @@ func _show_step() -> void:
 
 
 func _make_buttons() -> void:
-	for c in _buttons.get_children():
+	for c in _buttons.get_children():                # 바로 빼야 함: 남아 있으면 이전 단계의 넓은 단추 폭이 그대로 남음
+		_buttons.remove_child(c)
 		c.queue_free()
+	_buttons.size = Vector2.ZERO
 	var opts: Array = _cur()["opts"]
 	var wide := _cur().has("diagram")
 	for k in _opts.size():
 		var b := Pal.button("%d. %s" % [k + 1, opts[_opts[k]]])
-		b.custom_minimum_size = Vector2(250 if wide else 520, 20)
+		b.custom_minimum_size = Vector2(BTN_W_DIAGRAM if wide else BTN_W, 20)
 		b.clip_text = true                               # 긴 보기가 상자 밖으로 넘치지 않게
 		var idx: int = _opts[k]
 		b.pressed.connect(func(): pick(idx))
