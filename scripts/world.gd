@@ -261,6 +261,11 @@ static func npc_state(id: String) -> String:
 	return "awake"
 
 
+func home_pos(id: String) -> Vector2:
+	var h: String = NPC_PLAN[id]["home"]
+	return Vector2(spot_x(h), spot_floor(h))
+
+
 static func npc_target(id: String) -> Vector2:
 	var target: Vector2 = NPC_PLAN[id]["plan"][0][1]
 	for step in NPC_PLAN[id]["plan"]:
@@ -278,8 +283,11 @@ func npc_visible(id: String) -> bool:
 
 ## 사람을 목표 자리로 걷게 합니다. 층이 다르면 나선 계단에서 나타납니다.
 func _walk_npc(p: Vector2, target: Vector2, delta: float) -> Vector2:
-	if p.y != target.y:
-		return Vector2(STAIRS_X + 10.0, target.y)
+	if p.y != target.y:                                  # 다른 층: 먼저 나선 계단까지 걸어가서 층을 옮김
+		var sx := STAIRS_X + 10.0
+		if absf(p.x - sx) > 0.5:
+			return Vector2(move_toward(p.x, sx, NPC_SPEED * delta), p.y)
+		return Vector2(sx, target.y)
 	return Vector2(move_toward(p.x, target.x, NPC_SPEED * delta), p.y)
 
 
@@ -322,6 +330,7 @@ func _process(delta: float) -> void:
 			_npc_seen[id] = _npc_seen.get(id, 0.0) + delta
 		else:
 			_npc_seen.erase(id)
+			npc[id] = home_pos(id)                       # 깨어나기 전에는 자기 물건 자리에 (깨면 그 자리에서 나옴)
 	if Game.night.get("sailing", false):
 		boat_x += 28.0 * delta
 
@@ -415,7 +424,7 @@ func _draw() -> void:
 	var m := Game.minutes
 	var hy := HOR - cam.y * 0.15             # 먼 하늘과 바다는 조금만 움직입니다
 	var sky_pr := SkyPainter.cyl(Pal.SCREEN.x / 2.0, hy, SKY_K)
-	SkyPainter.draw(self, m, Pal.SCREEN, sky_pr)
+	SkyPainter.draw(self, m, Pal.SCREEN, sky_pr, rewind_from < 0.0)   # 되감기 중에는 별을 북극 중심으로 따로 그림
 	if rewind_from >= 0.0:
 		_draw_rewind_trails(m, sky_pr)
 	_draw_sea(m, hy)
@@ -424,6 +433,7 @@ func _draw() -> void:
 	_draw_harbor()
 	_draw_building()
 	_draw_people()
+	_draw_harbor_front()                                             # 배와 쌍안경은 플레이어보다 앞에
 	draw_set_transform(Vector2.ZERO)
 	_draw_prompt()
 
@@ -494,28 +504,41 @@ func _draw_exterior() -> void:
 		draw_texture_rect(_bg_tex[name], EXTERIOR[name], false, Color(1, 1, 1, ext_alpha))
 
 
-## 되감기: 실제 별들이 지금 위치에서 되감기 시작 시각까지 지나온 길을 호로 그림 (별이 모두 함께 거꾸로 돎)
+## 되감기: 별들이 천구 북극(북극성 근처)을 가운데 두고 거꾸로 돌며 동그란 호를 그림.
+## 북극을 가운데 둔 펼침(극 방위 등거리 투영)으로 그려야 호가 찌그러지지 않은 원이 됩니다.
+func _pole_xy(ra_h: float, dec: float, t: float, pole: Vector2) -> Vector2:
+	var h := deg_to_rad((Astro.lst(t) - ra_h) * 15.0)     # 시간각: 0이면 북극 바로 위
+	var r := (90.0 - dec) * SKY_K
+	return pole + Vector2(-sin(h), -cos(h)) * r
+
+
 func _draw_rewind_trails(m: float, pr: Dictionary) -> void:
+	var pole := SkyPainter.project(Vector2(Astro.LAT, 0.0), pr)
 	var span := minf(rewind_from - m, 240.0)
-	if span <= 1.0:
-		return
-	var steps := clampi(int(span / 12.0), 2, 20)
-	var dark := maxf(Astro.darkness(m), 0.35)
-	var groups := [[Astro.field(), 0.45], [[], 0.9]]
+	var dark := Astro.darkness(m)                        # 새벽과 초저녁엔 하늘이 밝아 보이지 않음 (투영이 바뀌는 순간이 티 나지 않게)
+	var stars := []
+	for s in Astro.field():
+		stars.append([s[0], s[1], s[2] * 0.6])
 	for id in Astro.STARS:
 		var rd: Vector2 = Astro.star_radec(id)
-		groups[1][0].append([rd.x, rd.y, 1.0])
-	for g in groups:
-		for s in g[0]:
-			var prev := Vector2.INF
-			for k in steps + 1:
+		stars.append([rd.x, rd.y, 1.0])
+	var steps := clampi(int(span / 8.0), 1, 30)
+	for s in stars:
+		var now := _pole_xy(s[0], s[1], m, pole)
+		if now.y > SkyPainter.horizon_y(pr) or now.x < -40 or now.x > Pal.SCREEN.x + 40:
+			continue
+		var a: float = s[2] * dark
+		if span > 1.0:
+			var prev := now
+			for k in range(1, steps + 1):
 				var t := m + span * k / steps
-				var aa := Astro.altaz(s[0], s[1], t)
-				var p := SkyPainter.project(aa, pr) if aa.x > 0.0 else Vector2.INF
-				if prev != Vector2.INF and p != Vector2.INF and prev.distance_to(p) < 120.0:
-					var fade := 1.0 - float(k) / (steps + 1)              # 지금 위치 쪽이 밝고, 지나온 쪽은 흐리게
-					draw_line(prev, p, Color(0.85, 0.9, 1.0, float(s[2]) * g[1] * dark * fade), 1.0)
-				prev = p
+				var q := _pole_xy(s[0], s[1], t, pole)
+				if Astro.altaz(s[0], s[1], t).x > 0.0:
+					draw_line(prev, q, Color(0.85, 0.9, 1.0, a * 0.8 * (1.0 - float(k) / (steps + 1))), 1.0)
+				prev = q
+		if Astro.altaz(s[0], s[1], m).x > 0.0:
+			draw_rect(Rect2(now - Vector2(0.5, 0.5), Vector2.ONE), Color(1, 1, 1, a))
+	draw_circle(pole, 1.6, Color(1, 1, 0.9, dark))
 
 
 ## 바깥(땅, 마당, 부두)은 밤이 깊을수록 어둡고 푸르스름하게
@@ -550,6 +573,11 @@ func _draw_harbor() -> void:
 	if gone == 0.0:
 		draw_string(get_theme_default_font(), Vector2(fx - 40, g - 80), "마지막 배 19:30", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.GOLD)
 	_draw_outdoor("harbor")
+
+
+## 부두 앞쪽(플레이어보다 가까운 쪽): 부두 끝 쌍안경, 부두 앞 물 위의 돌쇠 배
+func _draw_harbor_front() -> void:
+	var g: float = FLOOR_Y[0]
 	_prop("binoculars", Vector2(1296, g))                           # 부두 쌍안경 (부두 끝)
 	if not Game.freed.has("dolsoe") or Game.night.get("sailing", false):
 		if boat_x < WORLD_W + 100:

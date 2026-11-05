@@ -70,7 +70,7 @@ static func _sky_col(t: float, dark: float, dusk: float, moon: float) -> Color:
 
 
 ## 하늘을 그리고, 보이는 이름 있는 별의 화면 위치를 돌려줍니다.
-static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dictionary:
+static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary, stars := true) -> Dictionary:
 	var hy := horizon_y(pr)
 	var k := px_per_deg(pr)
 	var dark := Astro.darkness(m)
@@ -106,7 +106,7 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 			PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 0), Color(0.75, 0.75, 0.95, 0.10 + 0.08 * (1.0 - dark)), Color(0.75, 0.75, 0.95, 0.10 + 0.08 * (1.0 - dark))]))
 
 	var out := {}
-	if dark > 0.3:                       # 은하수: 아주 어두울 때만, 보름달 빛에는 거의 묻힘 (개기식 동안 다시 보임)
+	if dark > 0.3 and stars:             # 은하수: 아주 어두울 때만, 보름달 빛에는 거의 묻힘 (개기식 동안 다시 보임)
 		var mw := (dark - 0.3) / 0.7 * (1.0 - 0.85 * moon)
 		if mw > 0.03:
 			var mwp := Astro.milky_way()
@@ -121,7 +121,7 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 					continue
 				var big := 2.0 if k > 3.5 else 1.0
 				ci.draw_rect(Rect2(p - Vector2(big, big) / 2.0, Vector2(big, big)), Color(0.78, 0.8, 0.95, 0.16 * s[2] * mw * clampf(aa.x / 15.0, 0.3, 1.0)))
-	if dark > 0.05:
+	if dark > 0.05 and stars:
 		for s in Astro.field():
 			var aa := Astro.altaz(s[0], s[1], m)
 			if aa.x <= 0.0 or Astro.hidden(aa):

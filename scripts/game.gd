@@ -9,7 +9,7 @@ signal fact_added(id: String)
 
 const NIGHT_LEN := 870.0          # 17:00 ~ 07:30, 14시간 30분 (17:00에 시작해야 해넘이를 볼 수 있음)
 const START_CLOCK := 17 * 60
-const SEC_PER_MIN := 1.0 / 2.4    # 실제 약 0.42초 = 게임 1분 (한 밤 = 약 6분). 대화 중에는 시간이 멈춤
+const SEC_PER_MIN := 1.0 / 2.88   # 실제 약 0.35초 = 게임 1분 (한 밤 = 약 5분). 대화 중에는 시간이 멈춤
 const SAVE_PATH := "user://save.json"
 
 var minutes := 0.0
