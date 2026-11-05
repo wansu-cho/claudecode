@@ -34,7 +34,7 @@ const FACT_ORDER := [
 	"keti_story", "dolsoe_story", "ina_story", "hwi_story", "teo_story", "bori_story",
 ]
 
-## 우주 주소 (7조각). 마지막 조각은 다음 버전의 진 엔딩에서 얻습니다.
+## 우주 주소 (7조각). 여섯 조각은 손님에게서, 마지막 조각은 진엔딩의 별지기의 방에서 얻습니다.
 const ADDRESS := ["지구", "태양계", "우리은하", "국부은하군", "처녀자리 초은하단", "라니아케아 초은하단", "관측 가능한 우주"]
 const PIECE_OF := {"dolsoe": 0, "keti": 1, "ina": 2, "hwi": 3, "teo": 4, "bori": 5}
 

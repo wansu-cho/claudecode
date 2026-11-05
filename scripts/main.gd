@@ -98,8 +98,9 @@ func _begin_night(first_of_session: bool) -> void:
 		Game.unfreeze()
 	elif not Game.realized:
 		# 두 번째 밤: 첫 밤과 똑같이 시작합니다. 주인공은 아직 모릅니다.
+		# (첫 밤 도중에 껐다가 '이어 하기'로 돌아온 경우에는 데자뷔 없이 시작)
 		Game.freeze()
-		await dialogue.say(Story.INTRO + Story.DEJA_NIGHT2)
+		await dialogue.say(Story.INTRO + (Story.DEJA_NIGHT2 if Game.loop >= 2 else []))
 		Game.unfreeze()
 	else:
 		var lines := ["12월 13일 17:00. 다시, 해 질 녘이다.", "관측 일지는 그대로 남아 있다."]
