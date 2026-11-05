@@ -25,6 +25,7 @@ const EARTH_R := 15.0
 const VIEW_UP := Vector2(0, 29.3 / 136.0)      # 고리가 납작한 비율 (위에서 비스듬히 내려다본 정도)
 
 var month := 12
+var _bg: Texture2D = load("res://assets/views/view_bg_orrery.png")
 var _ring: Texture2D = load("res://assets/views/orrery_ring.png")
 var _pedestal: Texture2D = load("res://assets/views/orrery_pedestal.png")
 var _sun: Texture2D = load("res://assets/views/orrery_sun.png")
@@ -137,7 +138,7 @@ func _season() -> String:
 
 func _draw() -> void:
 	var font := get_theme_default_font()
-	draw_rect(Rect2(Vector2.ZERO, size), Color8(20, 18, 34))
+	draw_texture_rect(_bg, Rect2(Vector2.ZERO, Pal.SCREEN), false)   # 창고 실습실 벽과 선반
 	draw_string(font, Vector2(10, 16), "1층 창고 · 지구 공전 모형", HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	# 공전 모형: 나무 받침대와 금속 궤도 고리(비스듬히 본 모습), 받침 기둥 위의 태양
 	# 겹치는 순서: 고리 뒤쪽 → (뒤쪽 지구) → 받침대 → 태양 → 고리 앞쪽 → (앞쪽 지구)

@@ -11,6 +11,7 @@ const RATE := 8.39          # 도/시간 (북위 34°)
 const START_ANGLE := 24.0   # 17:00에 흔들리는 방향 (북쪽에서 시계 방향, 도)
 
 var _status := ""
+var _floor: Texture2D = load("res://assets/views/view_bg_pendulum.png")
 var _dial: Texture2D = load("res://assets/views/pend_dial.png")
 var _bob: Texture2D = load("res://assets/views/pend_bob.png")
 var _t := 0.0
@@ -85,7 +86,9 @@ func _dir(a_deg: float) -> Vector2:
 
 func _draw() -> void:
 	var font := get_theme_default_font()
-	draw_rect(Rect2(Vector2.ZERO, size), Color8(30, 26, 44))
+	var k := (R + 12.0) / 115.0                       # 바닥 그림의 둥근 무늬가 눈금판 둘레에 오게
+	var sz := Pal.SCREEN * k
+	draw_texture_rect(_floor, Rect2(CENTER - Vector2(320, 180) * k, sz), false)   # 위에서 본 홀 나무 마루
 	draw_string(font, Vector2(10, 16), "1층 가운데 홀 · 푸코 진자 (위에서 본 모습) · %s" % Game.clock(), HORIZONTAL_ALIGNMENT_LEFT, -1, Pal.SMALL, Pal.CYAN)
 	draw_texture_rect(_dial, Rect2(CENTER - Vector2(R, R), Vector2(R, R) * 2.0), false)   # 바닥 눈금판 (위에서 본 모습)
 	for spec in [["북", 0.0], ["동", 90.0], ["남", 180.0], ["서", 270.0]]:

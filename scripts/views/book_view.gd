@@ -12,6 +12,7 @@ var _page: Label
 var _title: Label
 var page_i := 0
 var _pic: Texture2D = null
+var _desk: Texture2D = load("res://assets/views/view_bg_book.png")
 var _nums: Array = []
 
 
@@ -86,7 +87,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color8(30, 26, 44))
+	draw_texture_rect(_desk, Rect2(Vector2.ZERO, Pal.SCREEN), false)   # 위에서 본 책상
+	draw_rect(Rect2(0, 0, Pal.SCREEN.x, 30), Color(0, 0, 0, 0.45))      # 제목 글씨가 잘 보이게
 	draw_rect(PAPER, Color8(250, 244, 228))
 	draw_rect(Rect2(PAPER.position.x, PAPER.position.y, 6, PAPER.size.y), Color8(200, 150, 90))
 	draw_rect(Rect2(PAPER.position.x + 10, PAPER.position.y + 26, PAPER.size.x - 20, 1), Color8(200, 186, 160))
