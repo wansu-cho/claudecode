@@ -70,6 +70,9 @@ const EXTERIOR := {
 const GROUND_TILE := Vector2(258.2, 90.2)     # 땅 단면 한 조각 (가로, 세로)
 const GROUND_UP := 3.0                       # 땅 조각 맨 위가 발 높이보다 이만큼 위 (풀 끝)
 const SEAWALL_W := 60.0                      # 마당 끝 바닷가 돌 축대 너비
+const FAR_ISLE_BASE := 109.8              # 먼 섬 그림 위에서 수평선까지 (게임 좌표)
+const FAR_LAMP := Vector2(323.3, 62.0)     # 먼 섬 그림 속 등대 불빛 칸 위치
+const FAR_CLOUD_BASE := 137.6              # 구름 그림 위에서 가장 낮은 구름 밑까지
 const SOIL := Color8(39, 16, 25)      # 마당 그림 맨 아래 흙 색 (그림 아래로 이어지는 땅)
 ## 가운데 홀 그림 속 2층 다리는 다른 방 바닥보다 이만큼 높습니다 (다리 위를 걸음)
 const BRIDGE_UP := 19.0
@@ -427,20 +430,40 @@ func _draw() -> void:
 
 func _draw_sea(m: float, hy: float) -> void:
 	var dark := Astro.darkness(m)
-	var sea := Color8(70, 110, 160).lerp(Color8(26, 18, 46), dark)
-	draw_rect(Rect2(0, hy, Pal.SCREEN.x, Pal.SCREEN.y - hy + 2), sea)
-	for i in 40:
-		var x := fposmod(i * 97.0 - cam.x * 0.2 + sin(_t + i) * 3.0, Pal.SCREEN.x)
-		var y := hy + 3 + (i * 13) % 80
-		draw_rect(Rect2(x, y, 3 + i % 4, 1), Color(0.75, 0.5, 0.8, 0.35 * dark + 0.15))
-	# 먼 등대 섬
-	var lx := 470.0 - cam.x * 0.05
-	draw_colored_polygon(PackedVector2Array([Vector2(lx - 30, hy + 1), Vector2(lx - 12, hy - 6), Vector2(lx + 14, hy - 5), Vector2(lx + 30, hy + 1)]), Color8(14, 10, 24))
-	draw_rect(Rect2(lx - 1, hy - 24, 3, 18), Color8(196, 196, 214))
-	draw_rect(Rect2(lx - 1, hy - 18, 3, 3), Color8(190, 60, 70))
-	var beam := 0.5 + 0.5 * sin(_t * 1.6)
-	draw_rect(Rect2(lx - 2, hy - 27, 5, 3), Color(1, 0.9, 0.6, 0.6 + 0.4 * beam))
-	draw_circle(Vector2(lx, hy - 26), 6, Color(1, 0.85, 0.5, 0.15 * dark * beam + 0.05))
+	var night := Color.WHITE.lerp(Color(0.32, 0.34, 0.55), dark)          # 밤에는 어둡고 푸르게
+	var dusk := clampf(1.0 - absf(Astro.sun_alt(m) + 4.0) / 9.0, 0.0, 1.0) # 해 질 녘 정도
+	# 노을 구름 띠: 수평선 위에 낮게. 해 질 녘에 진하고, 한밤에는 달빛 받은 옅은 구름
+	var cl := _tex("far_clouds")
+	var cw := 640.0
+	var cx0 := -fposmod(cam.x * 0.08 + _t * 1.5, cw)
+	var ctint := Color(1, 1, 1, 0.9).lerp(Color(0.42, 0.42, 0.6, 0.35), dark).lerp(Color(1, 0.86, 0.8, 1.0), dusk * 0.6)
+	while cx0 < Pal.SCREEN.x:
+		draw_texture_rect(cl, Rect2(cx0, hy - 6.0 - FAR_CLOUD_BASE, cw, 160.0), false, ctint)
+		cx0 += cw
+	# 바다: 맨 위가 수평선, 가까울수록 아래
+	var sea := _tex("far_sea")
+	var sx0 := -fposmod(cam.x * 0.2, 640.0)
+	while sx0 < Pal.SCREEN.x:
+		draw_texture_rect(sea, Rect2(sx0, hy, 640.0, 180.0), false, night)
+		sx0 += 640.0
+	# 먼 섬과 등대 (멀어서 푸르스름하게)
+	var lx := 150.0 - cam.x * 0.05
+	var isl := _tex("far_islands")
+	var itint := Color(0.78, 0.84, 0.95).lerp(Color(0.16, 0.15, 0.3), dark)
+	draw_texture_rect(isl, Rect2(lx, hy - FAR_ISLE_BASE, 500.0, 125.0), false, itint)
+	var lamp := Vector2(lx, hy - FAR_ISLE_BASE) + FAR_LAMP
+	var beam := 0.5 + 0.5 * sin(_t * 1.6)                                  # 돌아가는 등대 불빛
+	draw_circle(lamp, 2.2, Color(1, 0.92, 0.6, 0.55 + 0.45 * beam))
+	draw_circle(lamp, 8.0, Color(1, 0.85, 0.5, (0.12 + 0.18 * beam) * dark))
+	var sweep := Vector2(cos(_t * 1.6) * 60.0, 0)
+	if dark > 0.3:
+		draw_line(lamp, lamp + sweep, Color(1, 0.9, 0.6, 0.12 * dark), 3.0)
+
+
+func _tex(name: String) -> Texture2D:
+	if not _bg_tex.has(name):
+		_bg_tex[name] = load("res://assets/backgrounds/%s.png" % name)
+	return _bg_tex[name]
 
 
 ## 땅 (천문대 아래부터 마당까지, 지하까지 이어지는 흙)과 마당

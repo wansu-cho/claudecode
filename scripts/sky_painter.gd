@@ -60,6 +60,15 @@ static func horizon_y(pr: Dictionary) -> float:
 	return project(Vector2(0.0, pr["az"]), pr).y
 
 
+## 높이 t(0 = 화면 위, 1 = 수평선)에서의 하늘 색
+static func _sky_col(t: float, dark: float, dusk: float, moon: float) -> Color:
+	var night := NIGHT_TOP.lerp(NIGHT_HOR, t * t)
+	var day := DAY_TOP.lerp(DAY_HOR, t)
+	var c := day.lerp(night, dark)
+	c = c.lerp(DUSK, dusk * t * t * 0.8)
+	return c.lerp(MOON_SKY, moon * 0.35)
+
+
 ## 하늘을 그리고, 보이는 이름 있는 별의 화면 위치를 돌려줍니다.
 static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dictionary:
 	var hy := horizon_y(pr)
@@ -70,17 +79,31 @@ static func draw(ci: CanvasItem, m: float, size: Vector2, pr: Dictionary) -> Dic
 	# 보름달 빛: 하늘이 조금 밝아지고 어두운 별이 덜 보입니다. (개기식 동안에는 다시 어두워짐)
 	var moon := Astro.moonlight(m) * dark
 
-	# 하늘 그라데이션 (2픽셀 띠 + 체크무늬 디더링)
-	var y := 0
-	while y < int(hy) + 2:
-		var t := clampf(float(y) / hy, 0.0, 1.0)
-		var night := NIGHT_TOP.lerp(NIGHT_HOR, t * t)
-		var day := DAY_TOP.lerp(DAY_HOR, t)
-		var c := day.lerp(night, dark)
-		c = c.lerp(DUSK, dusk * t * t * 0.8)
-		c = c.lerp(MOON_SKY, moon * 0.35)
-		ci.draw_rect(Rect2(0, y, size.x, 2), c)
-		y += 2
+	# 하늘 그라데이션: 위에서 수평선까지 매끄럽게 (색 띠가 생기지 않게 꼭짓점 색을 섞어 그림)
+	var rows := 16
+	for i in rows:
+		var y0 := hy * i / rows
+		var y1 := hy * (i + 1) / rows + 0.5
+		var c0 := _sky_col(float(i) / rows, dark, dusk, moon)
+		var c1 := _sky_col(float(i + 1) / rows, dark, dusk, moon)
+		ci.draw_polygon(PackedVector2Array([Vector2(0, y0), Vector2(size.x, y0), Vector2(size.x, y1), Vector2(0, y1)]),
+				PackedColorArray([c0, c0, c1, c1]))
+	# 해가 진 쪽 수평선의 노을빛 (해의 방위를 따라 놓임)
+	var sun_aa := Astro.altaz(Astro.SUN_RA, Astro.SUN_DEC, m)
+	var glow := clampf(1.0 - absf(sun_aa.x + 3.0) / 12.0, 0.0, 1.0)
+	if glow > 0.0:
+		var sp := project(Vector2(0.0, sun_aa.y), pr)
+		if sp != OFF:
+			var pts := PackedVector2Array([Vector2(sp.x, hy)])
+			var cols := PackedColorArray([Color(DUSK, 0.75 * glow)])
+			for j in 25:
+				var a := PI + PI * j / 24.0
+				pts.append(Vector2(sp.x + cos(a) * 230.0, hy + sin(a) * 110.0))
+				cols.append(Color(DUSK, 0.0))
+			ci.draw_polygon(pts, cols)
+	# 수평선 근처의 옅은 빛 띠 (공기층)
+	ci.draw_polygon(PackedVector2Array([Vector2(0, hy - 26), Vector2(size.x, hy - 26), Vector2(size.x, hy), Vector2(0, hy)]),
+			PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 0), Color(0.75, 0.75, 0.95, 0.10 + 0.08 * (1.0 - dark)), Color(0.75, 0.75, 0.95, 0.10 + 0.08 * (1.0 - dark))]))
 
 	var out := {}
 	if dark > 0.3:                       # 은하수: 아주 어두울 때만, 보름달 빛에는 거의 묻힘 (개기식 동안 다시 보임)
